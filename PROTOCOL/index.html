@@ -1,0 +1,2279 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Async Python client for ComAp controllers">
+      
+      
+      
+        <link rel="canonical" href="https://igor-panteleev.github.io/pycomap/PROTOCOL/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>ComAp InteliLite/AMF25 — Protocol Reverse-Engineering Notes - pycomap</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="orange" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#comap-inteliliteamf25-protocol-reverse-engineering-notes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pycomap" class="md-header__button md-logo" aria-label="pycomap" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 3a2 2 0 0 0-2 2v11h2v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h6v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h2V5a2 2 0 0 0-2-2zm6 4V5h6v2zm0 2h6v2h-6zM8 5v4h2l-3 6v-4H5zm14 15v2H2v-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pycomap
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ComAp InteliLite/AMF25 — Protocol Reverse-Engineering Notes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="orange" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="orange" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/controller/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../protocol.md" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Protocol Notes
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pycomap" class="md-nav__button md-logo" aria-label="pycomap" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 3a2 2 0 0 0-2 2v11h2v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h6v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h2V5a2 2 0 0 0-2-2zm6 4V5h6v2zm0 2h6v2h-6zM8 5v4h2l-3 6v-4H5zm14 15v2H2v-2z"/></svg>
+
+    </a>
+    pycomap
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/controller/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controller
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Low-level Client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/datatypes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/alarms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alarms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protocol.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocol Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-the-three-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. The three channels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-udp-discovery-protocol-port-2413" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. UDP discovery protocol (port 2413)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-native-protocol-tcp-port-23-ethernetmessage-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Native protocol (TCP port 23) — "EthernetMessage" protocol
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Native protocol (TCP port 23) — &#34;EthernetMessage&#34; protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-wire-framing-two-nested-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Wire framing — two nested layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-crc16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 CRC16
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-operation-enum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Operation enum
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-full-connection-handshake-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Full connection / handshake sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#241-writing-password-protected-setpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.1 Writing password-protected setpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-known-communicationobject-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Known CommunicationObject IDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-error-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Error codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-forward-secrecy-old-captures-cannot-be-decrypted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 Forward secrecy — old captures cannot be decrypted
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-source-dlls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 Source DLLs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-modbus-existing-documented-reference-only-not-currently-used-by-the-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Modbus (existing, documented — reference only, not currently used by the component)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-configurationtable-and-valuesall-compound-object-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. ConfigurationTable and ValuesAll — compound object layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. ConfigurationTable and ValuesAll — compound object layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-names-heap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Names heap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-setpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Setpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-alarm-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Alarm list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-history-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 History records
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-group-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Group table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="comap-inteliliteamf25-protocol-reverse-engineering-notes">ComAp InteliLite/AMF25 — Protocol Reverse-Engineering Notes</h1>
+<p>This document records everything established during the reverse-engineering session: the
+UDP discovery protocol, the native ECDH/AES-encrypted TCP protocol InteliConfig actually
+uses (port 23, <em>not</em> gRPC, <em>not</em> real Telnet despite the port number), and how Modbus fits
+in. It is meant to be a complete enough reference to implement a Python client without
+re-deriving any of this from scratch.</p>
+<p>Everything here was derived from:</p>
+<ul>
+<li>Live Wireshark/tshark captures (both router-side <code>tcpdump</code> over SSH, and PC-side Wireshark
+  next to InteliConfig).</li>
+<li>Decompiling ComAp's own <code>CommunicationServer</code> .NET assemblies with <code>ilspycmd</code> (ILSpy). The
+  assemblies are <strong>not obfuscated</strong> — full class/method names survive decompilation.</li>
+<li>A working Python proof-of-concept client (see <code>comap_client.py</code>) that completed a full
+  live handshake and authenticated read against a real controller at <code>192.168.1.9</code>.</li>
+</ul>
+<h2 id="0-the-three-channels">0. The three channels</h2>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Transport</th>
+<th>Status</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UDP discovery</td>
+<td>UDP 2413</td>
+<td>Reverse-engineered, unencrypted</td>
+<td>Autodiscovery — used by the component's <code>config_flow</code></td>
+</tr>
+<tr>
+<td>Native protocol</td>
+<td>TCP 23</td>
+<td>Reverse-engineered, ECDH+AES encrypted</td>
+<td><strong>Primary data source for the component</strong> — what InteliConfig itself uses</td>
+</tr>
+<tr>
+<td>Modbus</td>
+<td>TCP 502 (or RTU)</td>
+<td>Vendor-documented, supported</td>
+<td>Not currently used by the component; kept here as reference (see §3) and as a cross-reference for object IDs/names while decoding the native protocol's compound objects</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The library and component build on UDP discovery + the native protocol only, for now.
+Modbus support is out of scope for the library; §3 below stays as a factual reference
+since <code>cfgmodbus.txt</code>'s <code>Com.Obj. #</code> column shares the same ID space as the native
+protocol's <code>CommunicationObject</code> IDs and may help decode the native protocol's
+still-unknown compound-object layouts.</p>
+</blockquote>
+<h2 id="1-udp-discovery-protocol-port-2413">1. UDP discovery protocol (port 2413)</h2>
+<ul>
+<li>InteliConfig broadcasts a probe from a random ephemeral source port to
+  <code>&lt;subnet-broadcast&gt;:2413</code> (e.g. <code>192.168.1.255:2413</code>) periodically while its main window is
+  open (observed on app open/reopen).</li>
+<li><strong>The probe and reply are not a bespoke discovery-only format</strong> — despite living on their
+  own UDP port, they're a regular <code>EthernetMessage</code> (see §2.1 below for the full framing
+  spec): a <code>SendMe</code> for a <code>Discovery</code> communication object (<code>0x5ead</code> = 24237), CRC16 and all.
+  Confirmed straight from the decompiled <code>ComAp.Communication.Core</code> (<code>UdpDiscoveryManager</code>):
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">private</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="kt">byte</span><span class="p">[]</span><span class="w"> </span><span class="nf">CreateDiscoveryMessage</span><span class="p">()</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">{</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">EthernetMessage</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Message</span><span class="p">.</span><span class="n">Parameters</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">        </span><span class="n">MessageType</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Message</span><span class="p">.</span><span class="n">Type</span><span class="p">.</span><span class="n">ClientToServer</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="n">MessageOperation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Message</span><span class="p">.</span><span class="n">Operation</span><span class="p">.</span><span class="n">SendMe</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="n">CommunicationObject</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CommunicationObject</span><span class="p">.</span><span class="n">Discovery</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p">},</span><span class="w"> </span><span class="mi">0</span><span class="p">).</span><span class="n">Save</span><span class="p">();</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">}</span>
+</code></pre></div>
+  i.e. <code>build_inner(Operation.SEND_ME, addr=1, comm_obj=0x5ead, data=b"", ident=0)</code> →
+  <code>00 00 00 00 ad 5e fd 73</code> (the trailing <code>ad 5e fd 73</code> is <strong>not</strong> a random per-probe nonce —
+  it's <code>comm_obj</code> (<code>ad 5e</code> LE = <code>0x5ead</code>) + the CRC16 of the rest (<code>fd 73</code> LE), constant for
+  every valid probe regardless of who sends it). <strong>The controller validates this CRC and
+  silently drops anything that doesn't pass</strong> — an early implementation that built the probe
+  as 4 reserved bytes + 4 <em>random</em> bytes got ignored essentially every time (1/65536 chance of
+  a random CRC match), while real InteliConfig traffic got a reply on every single probe. This
+  was the actual root cause of an extended debugging session that initially (incorrectly)
+  suspected client isolation / VLANs / switch storm-control — the probe simply wasn't a valid
+  message.</li>
+<li>The controller replies <strong>unicast</strong>, from UDP port 2413 to the probe's source port, with
+  another <code>EthernetMessage</code>: <code>SendTo</code>, same <code>Discovery</code> comm object, data = a binary
+  <code>DiscoveryDevice</code> payload. The Wireshark hex of one real reply:
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>IP 192.168.1.9 -&gt; 192.168.1.181, UDP sport=2413 dport=&lt;probe&#39;s ephemeral port&gt;
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>payload (73 bytes):
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>41 00 01 00 ad 5e 01 04 00 00 00 00 c9 00 a1 0f
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>c0 a8 01 09 68 69 f2 02 2e 86 17 00 01 00 00 00
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>00 00 00 00 00 75 90 00 00 00 0f 00 01 00 00 00
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>01 0e 46 56 20 31 35 30 30 30 00 00 00 00 00 00
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>00 00 22 29 12 76 18 18
+</code></pre></div>
+  Stripping the 6-byte <code>EthernetMessage</code> header + 2-byte trailing CRC leaves a 65-byte
+  <code>DiscoveryDevice</code> payload, decoded field-by-field from the decompiled <code>DiscoveryDevice.Load</code>
+  (<code>ComAp.Communication.Core</code>):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>offset</th>
+<th>size</th>
+<th>field</th>
+<th>example value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>1</td>
+<td><code>FormatVersion</code></td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td>1</td>
+<td>1</td>
+<td><code>Type</code> (<code>DeviceType</code> enum: <code>IbNt=0, IbCom=1, IbLite=2, CmEthernet=4, IG500BuiltInEthernet=5</code>)</td>
+<td><code>4</code> (<code>CmEthernet</code>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4</td>
+<td><code>SerialNumber</code> (uint32 LE)</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>2</td>
+<td>firmware major/minor (uint16 LE)</td>
+<td><code>201</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>2</td>
+<td>firmware patch/build (uint16 LE) — only present when <code>FormatVersion &gt;= 1</code>; header is 42 bytes total for version 0, 44 for version 1+</td>
+<td><code>4001</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td>4</td>
+<td><code>IPAddress</code> (4 raw bytes, in order)</td>
+<td><code>c0 a8 01 09</code> = <code>192.168.1.9</code></td>
+</tr>
+<tr>
+<td>14</td>
+<td>6</td>
+<td><code>MACAddress</code> (6 raw bytes)</td>
+<td><code>68:69:f2:02:2e:86</code></td>
+</tr>
+<tr>
+<td>20</td>
+<td>2</td>
+<td><code>CommunicationPort</code> (uint16 LE) — the TCP port for §2's protocol</td>
+<td><code>23</code></td>
+</tr>
+<tr>
+<td>22</td>
+<td>1</td>
+<td><code>SelectedAccessType</code> (flags: <code>IpAddress=1, AirGate=2</code>)</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td>23</td>
+<td>16</td>
+<td><code>AirgateIdentifier</code> (ASCII, null-terminated)</td>
+<td><code>""</code></td>
+</tr>
+<tr>
+<td>39</td>
+<td>4</td>
+<td><code>ConnectedUnits</code> (bitmask, one bit per unit address)</td>
+<td><code>0b1</code></td>
+</tr>
+<tr>
+<td>43</td>
+<td>1</td>
+<td><code>IsUnitsListComplete</code> (0/1)</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td>44</td>
+<td>21×N</td>
+<td>one <code>DiscoveryUnit</code> record per remaining 21 bytes (see below)</td>
+<td>1 unit</td>
+</tr>
+</tbody>
+</table>
+<p>Each 21-byte <code>DiscoveryUnit</code> record: <code>Type</code> (1 byte) + <code>Name</code> (16 bytes ASCII,
+  null-terminated) + <code>SerialNumber</code> (4 raw bytes, displayed as hex — <em>not</em> a little-endian
+  uint32; reading the bytes in stream order and hex-encoding them directly reproduces the
+  serial number shown in InteliConfig's UI exactly, e.g. <code>22 29 12 76</code> → <code>"22291276"</code>).
+  Decoding the real reply above gives <code>ip=192.168.1.9</code>, <code>mac=68:69:f2:02:2e:86</code>,
+  <code>comm_port=23</code>, one unit <code>name="FV 15000"</code> <code>serial="22291276"</code> — matching InteliConfig's own
+  discovered-device card exactly (IP and SN both visible there).
+- <strong>Caveat (router hardware-switch blind spot):</strong> if you try to capture this on a router with
+  a hardware-offloaded switch (DSA-style, seen <code>switch0</code> and per-port <code>ethN@switch0</code>
+  interfaces in <code>ip link</code>), unicast traffic between two LAN hosts on the same VLAN may be
+  switched entirely in silicon and never reach the CPU's Linux bridge netdev — <code>tcpdump -i
+  br0</code> will see the broadcast probe but <strong>not</strong> the unicast reply. Broadcasts get flooded to
+  the CPU so they're always visible; unicast reads need to be captured on one of the actual
+  endpoints (or via port mirroring/SPAN if the switch supports it).</p>
+<h2 id="2-native-protocol-tcp-port-23-ethernetmessage-protocol">2. Native protocol (TCP port 23) — "EthernetMessage" protocol</h2>
+<p>This is what <code>ComAp.Communication.Service.exe</code> (a separate background Windows service,
+<em>not</em> InteliConfig.exe itself) speaks to the controller. InteliConfig.exe talks to that local
+service over <strong>gRPC on localhost</strong> (see service logs:
+<code>/Server.ControllerReadDataContract/GetCommunicationObjectsValues</code> etc.) — the gRPC layer
+never touches the network to the controller, it's purely local IPC. The actual wire protocol
+to the controller is this custom binary protocol, exposed over plain TCP on port 23.
+Wireshark labels it "TELNET" purely because of the port number; the bytes are not telnet.</p>
+<h3 id="21-wire-framing-two-nested-layers">2.1 Wire framing — two nested layers</h3>
+<p><strong>Layer 1 (outer "block alignment" wrapper).</strong> Present on every message <strong>except</strong> the very
+first one (see §2.4 step 2):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[1 byte: block_count][block_count * 16 bytes: payload, zero-padded to the block boundary]
+</code></pre></div>
+- Before AES is established this payload is the literal inner message, unencrypted
+  (<code>NoCipherAligned</code> in the decompiled source).
+- After AES is established (§2.4 step 9 onward) this payload is AES-256-CBC ciphertext of
+  the inner message (§2.3).</p>
+<p><strong>Layer 2 (inner "EthernetMessage"):</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>offset  size  field
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>0       2     data_length : uint16 LE — length of `data` below (header/CRC not included)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>2       1     bit-packed: bits[0:3] = Operation (§2.2), bits[3:8] = ControllerAddress - 1
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>3       1     Identifier — sequence/correlation byte
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>4       2     CommunicationObject ID : uint16 LE
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>6       dlen  data
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>6+dlen  2     CRC16 LE, computed over bytes [0 .. 6+dlen) — i.e. header+data, NOT itself
+</code></pre></div>
+Total inner message length = <code>data_length + 8</code>.</p>
+<p><strong>Exception — the very first message of any connection.</strong> The controller proactively pushes
+<code>VersionIB</code> the instant the TCP connection opens, using the plain <code>EthernetMessage</code> layout
+directly with <strong>no outer block-wrapper</strong> (cipher is <code>NoCipher</code>, a pure passthrough, at this
+point). Every message from then on — both directions — goes through the outer wrapper.</p>
+<p><strong><code>SendToBlock</code> (op=2) messages</strong> insert one extra byte right after the 6-byte header:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>offset 6:    block_info byte — bits[0:7] = block_index, bit[7] = is_last_block
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>offset 7..:  data (length = data_length - 1)
+</code></pre></div>
+Used for objects too large for one message (e.g. <code>ValuesAll</code>/<code>ConfigurationTable</code> may or may
+not need this depending on size vs. negotiated max length, see §2.4 step 12). After receiving
+a non-final block, the client must send <code>Next</code> (op=3) with no data to request the following
+block.</p>
+<h3 id="22-crc16">2.2 CRC16</h3>
+<p>Standard MODBUS/ANSI CRC16 — init <code>0xFFFF</code>, polynomial <code>0xA001</code> (reflected <code>0x8005</code>), no
+final XOR. Verified byte-for-byte against multiple live captures and live traffic.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">crc16</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">crc</span> <span class="o">=</span> <span class="mh">0xFFFF</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">crc</span> <span class="o">^=</span> <span class="n">b</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            <span class="n">crc</span> <span class="o">=</span> <span class="p">(</span><span class="n">crc</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">^</span> <span class="mh">0xA001</span> <span class="k">if</span> <span class="n">crc</span> <span class="o">&amp;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">crc</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="k">return</span> <span class="n">crc</span>
+</code></pre></div>
+<h3 id="23-operation-enum">2.3 Operation enum</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>SendMe        = 0   # client request: &quot;send me object X&quot; — no data
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>SendTo        = 1   # carries data — write request, or read response
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>SendToBlock   = 2   # one block of a large object, see block_info byte above
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>Next          = 3   # also &quot;Acknowledgment&quot; — request next block / ack a write
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>Error         = 4   # data = uint32 LE error code, see §2.6
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>Repeat        = 5
+</code></pre></div>
+<h3 id="24-full-connection-handshake-sequence">2.4 Full connection / handshake sequence</h3>
+<ol>
+<li>TCP connect to <code>&lt;controller_ip&gt;:23</code>.</li>
+<li>Controller immediately sends <code>VersionIB</code> (CommunicationObject <strong>24533</strong>), op=<code>SendTo</code>,
+   2-byte data, <strong>plain framing</strong> (no outer wrapper, no encryption) — this is the one
+   exception described in §2.1.</li>
+<li><code>data</code> as <code>uint16</code> LE: bits <code>0..15</code> (mask <code>0x7FFF</code>) = protocol version. Bit <code>15</code>
+     (<code>0x8000</code>) set ⇒ AES ciphering; clear ⇒ legacy Blowfish (<code>BlowfishCipher</code> — present in
+     the decompiled source but not implemented in our PoC client; assume modern firmware
+     uses AES).</li>
+<li>Switch local framing mode to "block-wrapped" — every message from here on (both
+   directions) is <code>[1-byte count][count*16 bytes]</code>.</li>
+<li>Client sends <code>SendMe(EcdhPublicKey)</code> — CommunicationObject <strong>24119</strong>, no data.</li>
+<li>Controller responds <code>SendTo(EcdhPublicKey)</code> with <code>data</code> = <code>[4 bytes unknown/reserved
+   prefix][65-byte raw uncompressed EC point]</code> — curve is <strong>secp256r1 (P-256)</strong>, point format
+   <code>0x04 || X[32] || Y[32]</code>. The decompiled <code>TerminalAesCipher</code> constructor does
+   <code>controllerPublicKey.Skip(4)</code> to extract the point — i.e. <strong>read = skip first 4 bytes</strong>.</li>
+<li>Client generates its own ephemeral EC keypair on secp256r1, and writes its public key
+   back: <code>SendTo(EcdhPublicKey)</code> with <code>data</code> = <code>[1-byte length=65][65-byte raw uncompressed
+   point]</code>. <strong>This is asymmetric with step 5</strong> — the write format is a 1-byte length prefix,
+   not whatever 4-byte prefix the controller used on read. (Source: <code>TerminalAesCipher</code>
+   constructor builds <code>PublicKey = [length_byte] + raw_point_bytes</code>.) Sending plain 65 raw
+   bytes here fails with <code>BadWriteValue</code> (134217955) — confirmed live.</li>
+<li>Controller acknowledges with <code>Next</code> (op=3), no data.</li>
+<li>Compute the ECDH shared secret: X-coordinate of <code>our_private_key * their_public_key</code> on
+   secp256r1, as 32 bytes big-endian (left-zero-padded if the X-coordinate is short — BouncyCastle
+   does <code>AddLeadingZero(.., 32)</code>; Python's <code>cryptography</code> <code>exchange()</code> already returns 32
+   bytes for P-256 so this is automatic).</li>
+<li>Derive the AES key and IV from the access code (the controller's numeric password, e.g.
+   <code>"0"</code>), via <strong>double HMAC-SHA256</strong> keyed by the access code:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">access_bytes</span> <span class="o">=</span> <span class="n">access_code</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">aes_key</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">access_bytes</span><span class="p">,</span> <span class="n">shared_secret</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>        <span class="c1"># 32 bytes -&gt; AES-256 key</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">iv</span>      <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">access_bytes</span><span class="p">,</span> <span class="n">aes_key</span><span class="p">,</span>       <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>   <span class="c1"># 16 bytes</span>
+</code></pre></div></li>
+<li>From here on, the outer block-wrapper's payload is <strong>AES-256-CBC ciphertext</strong> of the inner
+   <code>EthernetMessage</code> (zero-padded to a 16-byte boundary before encryption — <code>PaddingMode.Zeros</code>
+   on the .NET side, no real PKCS padding; just truncate after decrypting using the inner
+   message's own <code>data_length</code> field).</li>
+<li><strong>Critical/non-obvious:</strong> there is exactly <strong>one</strong> IV value for the whole connection,
+     shared between encryption and decryption, updated after <em>every single</em> AES operation —
+     in <em>either</em> direction — to that operation's <strong>ciphertext's</strong> last 16 bytes. It is <em>not</em>
+     two independent per-direction chains. Both peers stay in lock-step because the
+     ciphertext bytes that drive the update are visible to both sides, in the same order,
+     since this is a strict request/response protocol over one TCP connection. (Initially
+     implementing this as two separate per-direction IV chains produces a connection that
+     completes the handshake but then fails to decrypt anything, with CRC errors on every
+     subsequent message — this was hit and fixed during the PoC.)</li>
+<li>Verify access — <strong>try the hash-challenge method first</strong>:<ul>
+<li><code>SendMe(VerifyAccessHash)</code> (CommunicationObject <strong>24324</strong>).</li>
+<li>If the controller answers <code>Error</code> with code <code>TerminalAccessDisabled</code> (<strong>134217960</strong>) or
+  <code>NonExistingCommunicationObject</code> (<strong>100794368</strong>) — expected on at least this firmware —
+  fall back to step 11.</li>
+<li>Otherwise the read succeeds and returns a nonce; compute
+  <code>credentials = ascii(uppercase_hex(md5(nonce + ascii(access_code))))</code> (32 ASCII bytes —
+  MD5 digest rendered as an uppercase hex string, then that <em>string</em> is what's sent, not
+  the raw digest) and write it back via <code>SendTo(VerifyAccessHash)</code>.</li>
+</ul>
+</li>
+<li><strong>Fallback — plain access code</strong> (this is the path our real controller actually uses):
+    <code>SendTo(VerifyAccess)</code> (CommunicationObject <strong>24534</strong>) with <code>data</code> =
+    <code>ascii(access_code)</code> null-padded to 16 bytes. Controller acknowledges with <code>Next</code>. This
+    completed successfully against the real controller using access code <code>"0"</code>.</li>
+<li>Read <code>MaxMessageDataLengths</code> (CommunicationObject <strong>24269</strong>) to learn the negotiated
+    max per-message data sizes. Observed live response: <code>02 68 05 68 05 00 00</code> (7 bytes) —
+    format byte <code>0x02</code> ⇒ <code>ServerToClient = uint16_le(bytes[1:3])</code>,
+    <code>ClientToServer = uint16_le(bytes[3:5])</code> ⇒ both <code>0x0568</code> = <strong>1384 bytes</strong>.</li>
+<li>Connection is now fully authenticated. Any <code>CommunicationObject</code> (§2.5) can be read or
+    written with <code>SendMe</code>/<code>SendTo</code>, transparently handling <code>SendToBlock</code> continuation for
+    large objects.</li>
+</ol>
+<p>This entire sequence (steps 1–13) was executed live against a real InteliLite/AMF25
+controller and succeeded, including reading <code>ValuesAll</code> (855 bytes) afterward and finding
+the controller's own IP/MAC/netmask as readable ASCII substrings inside it — independent
+confirmation the whole chain (framing, CRC, ECDH, AES, IV chaining, access verification) is
+correct.</p>
+<h3 id="241-writing-password-protected-setpoints">2.4.1 Writing password-protected setpoints</h3>
+<p>The <strong>AccessCode</strong> (steps 8-11) and the <strong>Password</strong> (for setpoint writes) are entirely
+separate credentials:</p>
+<ul>
+<li><strong>AccessCode</strong> (string, e.g. <code>"0"</code>) — gates the TCP connection itself; baked into the
+  AES key via double HMAC-SHA256 (step 8). Factory default is <code>"0"</code>. Verified once per
+  connection via <code>VerifyAccess</code>/<code>VerifyAccessHash</code>.</li>
+<li><strong>Password</strong> (integer 0-9999) — gates individual setpoint writes based on each
+  setpoint's configured <code>accessLevel</code> field. Factory default is also <code>0</code> (disabled). Stored
+  independently of the AccessCode; changing one doesn't change the other.</li>
+</ul>
+<p>To write a password-protected setpoint (one where a plain <code>write_object</code> returns
+<code>ControllerError.INVALID_PASSWORD</code> = 134217978), submit the password via
+<code>CommunicationObject.PASSWORD_FOR_WRITE</code> (24524, 2 bytes LE) over the already-established
+AES channel, then perform the setpoint write:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span>          <span class="c1"># AccessCode — derives the AES key</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">elevate_access</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>       <span class="c1"># Password  — CommunicationObject 24524</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">write_object</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="n">raw</span><span class="p">)</span>  <span class="c1"># setpoint write now succeeds</span>
+</code></pre></div>
+<p><code>elevate_access(password: int)</code> is idempotent within a session — call it once before a
+batch of writes rather than once per write. There is also a nonce-based hash variant
+(<code>CommunicationObject.PASSWORD_FOR_WRITE_HASH</code> = 24286, 32 bytes) for controllers that
+disable the plain submission, mirroring the <code>VerifyAccessHash</code>/<code>VerifyAccess</code> pattern from
+steps 10-11 — not yet tested.</p>
+<p><strong>Brute-force protection</strong> (per the InteliLite Global Guide §5.3.4): 5 wrong attempts →
+1 min lockout, doubling each time, 100 wrong → permanent lockout requiring a reset
+procedure. Do not call <code>elevate_access</code> in a retry loop.</p>
+<p><strong>Equivalent mechanisms on other channels</strong> (all confirmed live):</p>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Password submission</th>
+<th>Setpoint write</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Native protocol (TCP/23)</td>
+<td><code>write_object(24524, uint16_le(password))</code></td>
+<td><code>write_object(number, bytes)</code></td>
+</tr>
+<tr>
+<td>Modbus TCP (TCP/502)</td>
+<td>Write <code>password</code> to reserved register 4211 (uint16 BE)</td>
+<td>Write to setpoint's register address</td>
+</tr>
+<tr>
+<td>Web UI (HTTP/80)</td>
+<td>POST <code>MD5(page_nonce + str(password)).upper()</code> to <code>CONTROL.HTM</code></td>
+<td>Edit via <code>params.htm</code></td>
+</tr>
+</tbody>
+</table>
+<p>The Modbus register 4211 is documented as a "reserved register" in the firmware's Modbus
+table, not in the standard setpoint/value cfgmodbus export.</p>
+<h3 id="25-known-communicationobject-ids">2.5 Known <code>CommunicationObject</code> IDs</h3>
+<p>Source: decompiled <code>ComAp.Controller.dll</code>, class <code>CommunicationObject</code> (a plain class with a
+huge list of <code>public static readonly CommunicationObject Foo = new CommunicationObject(id,
+size[, AccessType])</code> initializers — not a C# <code>enum</code>, which is why grepping for "enum
+CommunicationObject" doesn't find it).</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>ID (dec)</th>
+<th>ID (hex)</th>
+<th>Size</th>
+<th>Access</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VersionIB</td>
+<td>24533</td>
+<td>0x5FD5</td>
+<td>2</td>
+<td>Read</td>
+<td>sent unsolicited on connect</td>
+</tr>
+<tr>
+<td>EcdhPublicKey</td>
+<td>24119</td>
+<td>0x5E37</td>
+<td>variable</td>
+<td>—</td>
+<td>see §2.4 steps 4-6 for read/write asymmetry</td>
+</tr>
+<tr>
+<td>VerifyAccessHash</td>
+<td>24324</td>
+<td>0x5F04</td>
+<td>32</td>
+<td>—</td>
+<td>hash-challenge auth; disabled on our firmware</td>
+</tr>
+<tr>
+<td>VerifyAccess</td>
+<td>24534</td>
+<td>0x5FD6</td>
+<td>16</td>
+<td>Write</td>
+<td>plain-password auth fallback; <strong>confirmed working</strong></td>
+</tr>
+<tr>
+<td>MaxMessageDataLengths</td>
+<td>24269</td>
+<td>0x5ECD</td>
+<td>5</td>
+<td>—</td>
+<td>confirmed working</td>
+</tr>
+<tr>
+<td>ComapProtocolFeatures</td>
+<td>24023</td>
+<td>0x5DD7</td>
+<td>—</td>
+<td>Read</td>
+<td>used to pick CryptoSuite1 vs 2</td>
+</tr>
+<tr>
+<td>ValuesAll</td>
+<td>24560</td>
+<td>0x5FF0</td>
+<td>variable</td>
+<td>Read</td>
+<td><strong>confirmed working live</strong>, 855 bytes incl. IP/MAC</td>
+</tr>
+<tr>
+<td>ValueStatesAll</td>
+<td>24555</td>
+<td>0x5FEB</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ValueStatesAndDataAll</td>
+<td>24529</td>
+<td>0x5FD1</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ValuesCategoryI/II/III</td>
+<td>24563/24562/24561</td>
+<td></td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ValueStatesCategoryI/II/III</td>
+<td>24558/24557/24556</td>
+<td></td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>SetpointsAll</td>
+<td>24559</td>
+<td>0x5FEF</td>
+<td>—</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>SetpointsR</td>
+<td>24543</td>
+<td>0x5FDF</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>SetpointsP</td>
+<td>24544</td>
+<td>0x5FE0</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>AlarmList</td>
+<td>24545</td>
+<td>0x5FE1</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>AlarmListWithVersion</td>
+<td>24024</td>
+<td>0x5DD8</td>
+<td>—</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ConfigurationTable</td>
+<td>24575</td>
+<td>0x5FFF</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>TerminalConfigurationTable</td>
+<td>24574</td>
+<td>0x5FFE</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ConfigurationTableCrc16</td>
+<td>24573</td>
+<td>0x5FFD</td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>TerminalConfigurationTableCrc16</td>
+<td>24572</td>
+<td>0x5FFC</td>
+<td>2</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>SerialNumber</td>
+<td>24548</td>
+<td>0x5FE4</td>
+<td>4</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>FirmwareVersionText</td>
+<td>24339</td>
+<td>0x5F13</td>
+<td>16</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>BootloaderFirmwareVersion</td>
+<td>24277</td>
+<td>0x5ED5</td>
+<td>4</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ControllerFirmwareIdentification</td>
+<td>24115</td>
+<td>0x5E33</td>
+<td>1</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>Command</td>
+<td>24551</td>
+<td>0x5FE7</td>
+<td>2</td>
+<td>Write</td>
+<td></td>
+</tr>
+<tr>
+<td>CommandWithArgument</td>
+<td>23859</td>
+<td>0x5D33</td>
+<td>—</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>CommandArgument</td>
+<td>24550</td>
+<td>0x5FE6</td>
+<td>4</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>HistoryLength</td>
+<td>24538</td>
+<td>0x5FDA</td>
+<td>2</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>MaxHistoryRecords</td>
+<td>24564</td>
+<td>0x5FF4</td>
+<td>2</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ReadIndexInHistory</td>
+<td>24565</td>
+<td>0x5FF5</td>
+<td>2</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>WriteIndexInHistory</td>
+<td>24566</td>
+<td>0x5FF6</td>
+<td>2</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>OlderHistoryRecord / YoungerHistoryRecord / YoungestHistoryRecord / NewHistoryRecords</td>
+<td>24567 / 24568 / 24569 / 24570</td>
+<td></td>
+<td>variable</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>CommunicationState</td>
+<td>24571</td>
+<td>0x5FFB</td>
+<td>4</td>
+<td>Read</td>
+<td></td>
+</tr>
+<tr>
+<td>ControllerAddress</td>
+<td>24537</td>
+<td>0x5FD9</td>
+<td>1</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>DisplayContrast</td>
+<td>24547</td>
+<td>0x5FE3</td>
+<td>1</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>GsmPin</td>
+<td>24536</td>
+<td>0x5FD8</td>
+<td>2</td>
+<td>Write</td>
+<td></td>
+</tr>
+<tr>
+<td>ChangeAccess</td>
+<td>24535</td>
+<td>0x5FD7</td>
+<td>—</td>
+<td>Write</td>
+<td></td>
+</tr>
+<tr>
+<td>SystemTime / Date / Time</td>
+<td>24552 / 24553 / 24554</td>
+<td></td>
+<td>0/3/3</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>InteliMains</td>
+<td>24528</td>
+<td>0x5FD0</td>
+<td>4</td>
+<td>Write</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>This is a partial list (the full class has well over a hundred entries — most relate to
+modem/GSM/history/programming features unlikely to be relevant to this project). To extend
+this table, decompile <code>ComAp.Controller.dll</code> again and grep the <code>CommunicationObject</code> class
+body (around line 31248 onward in our decompile) for the object you need.</p>
+<h3 id="26-error-codes">2.6 Error codes</h3>
+<p>Source: decompiled <code>ComAp.GlobalShared.dll</code>, <code>public enum ControllerError : uint</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value (dec)</th>
+<th>Value (hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ok / None</td>
+<td>0</td>
+<td>0x0</td>
+</tr>
+<tr>
+<td>NoAnswer</td>
+<td>1</td>
+<td>0x1</td>
+</tr>
+<tr>
+<td>AnswerPostponed</td>
+<td>2</td>
+<td>0x2</td>
+</tr>
+<tr>
+<td>NonExistingCommunicationObject</td>
+<td>100794368</td>
+<td>0x06020000</td>
+</tr>
+<tr>
+<td>TerminalAccessDisabled</td>
+<td>134217960</td>
+<td>0x080000E8</td>
+</tr>
+<tr>
+<td>BadWriteValue</td>
+<td>134217955</td>
+<td>0x080000E3</td>
+</tr>
+</tbody>
+</table>
+<p>(Full enum has many more members — re-decompile <code>ComAp.GlobalShared.dll</code> and grep <code>enum
+ControllerError</code> to extend as needed. Error message data on the wire is the numeric value as
+<code>uint32</code> LE.)</p>
+<h3 id="27-forward-secrecy-old-captures-cannot-be-decrypted">2.7 Forward secrecy — old captures cannot be decrypted</h3>
+<p>Because the ECDH keypairs are <strong>ephemeral</strong> (generated fresh per connection; the private key
+never touches the wire), no previously captured session can ever be decrypted, no matter how
+well this protocol is understood — there is a hard cryptographic wall, not a parsing gap.
+Any future debugging of this protocol must be done <strong>live</strong> (a live client or a live MITM),
+not from old <code>.pcap</code> files.</p>
+<h3 id="28-source-dlls">2.8 Source DLLs</h3>
+<p>All found under <code>C:\Program Files (x86)\ComAp PC Suite\Tools\CommunicationServer\</code> on a
+machine with InteliConfig installed. Decompiled with <code>ilspycmd</code> (the cross-platform ILSpy
+CLI, installed via <code>dotnet tool install ilspycmd</code>).</p>
+<table>
+<thead>
+<tr>
+<th>DLL</th>
+<th>Relevant contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ComAp.Communication.Core.dll</code></td>
+<td><code>EthernetConnection</code>, <code>MessageManager</code>, <code>Message</code>/<code>EthernetMessage</code>/<code>AirgateMessage</code>, <code>Ciphering.AesCipher</code>/<code>TerminalAesCipher</code>/<code>BlowfishCipher</code>/<code>NoCipherAligned</code>, <code>CryptoSuite1</code>/<code>CryptoSuite2</code></td>
+</tr>
+<tr>
+<td><code>ComAp.Common.dll</code></td>
+<td><code>Crc16Bit</code>, <code>Crc8Bit</code></td>
+</tr>
+<tr>
+<td><code>ComAp.Controller.dll</code></td>
+<td><code>CommunicationObject</code> (all IDs), <code>Security.GetHashedCredentials</code></td>
+</tr>
+<tr>
+<td><code>ComAp.GlobalShared.dll</code></td>
+<td><code>ControllerError</code> enum</td>
+</tr>
+<tr>
+<td><code>BouncyCastle.Crypto.dll</code></td>
+<td>the EC/ECDH math library used .NET-side (confirms secp256r1 + raw <code>IBasicAgreement</code> ECDH, no KDF beyond what's in §2.4 step 8)</td>
+</tr>
+</tbody>
+</table>
+<p>This entire sequence is implemented in <code>pycomap.protocol.ComApClient</code> and validated live
+against real hardware.</p>
+<h2 id="3-modbus-existing-documented-reference-only-not-currently-used-by-the-component">3. Modbus (existing, documented — reference only, not currently used by the component)</h2>
+<p><code>cfgmodbus.txt</code> is exported directly from InteliConfig's own Modbus-configuration export
+feature (not reverse-engineered — this is a supported, documented vendor feature). It's a
+fixed-width text export with three tables:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Allowed Modbus functions</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Binaries</code></td>
+<td>01, 02</td>
+<td>Discrete inputs/coils — binary I/O, individual alarm bits, etc.</td>
+</tr>
+<tr>
+<td><code>Values</code></td>
+<td>03, 04</td>
+<td>Holding/input registers — analog measurements, states, lists</td>
+</tr>
+<tr>
+<td><code>Setpoints</code></td>
+<td>03, 04, 06, 16</td>
+<td>Holding registers, read/write — configuration values</td>
+</tr>
+</tbody>
+</table>
+<p>Common columns across tables (column layout differs slightly per table — see the file's own
+<code>HEADER</code> block at the top for exact field widths):
+- <strong>Modbus address</strong> (per-table addressing, e.g. <code>01000</code> for the first Values register)
+- <strong>Com.Obj. # ("C.O.#")</strong> — this is literally the same <code>CommunicationObject</code> ID space as
+  §2.5! E.g. <code>RPM</code> is C.O. <code>10123</code>, <code>ECU State</code> is C.O. <code>10034</code>. This means the Modbus table
+  and the native protocol's object IDs are two views onto the <em>same</em> underlying controller
+  object model — worth keeping in mind if cross-referencing or validating one against the
+  other later.
+- <strong>Name</strong>, <strong>Dimension</strong> (unit), <strong>Type</strong> (<code>Integer</code>/<code>Unsigned</code>/<code>Binary#N</code>/<code>List#N</code>/<code>String</code>/etc.),
+  <strong>Len</strong> (register count), <strong>Dec</strong> (decimal places for scaling), <strong>Min/Max</strong>, <strong>Group /
+  Subgroup</strong> (used for organizing entities)
+- <code>Binaries</code> additionally has <strong>Bit #</strong> / <strong>Bit Name</strong> for individual bits within a binary
+  word, and a <code>State</code>-row format (<code>Value</code>/<code>State</code> column) describing protection levels per
+  bit (Level 1/Level 2/Sensor failure).</p>
+<p>The component doesn't use Modbus as a transport for now (see §0), but this file's <code>Com.Obj. #</code>
+column is still useful: it shares the same <code>CommunicationObject</code> ID space as the native
+protocol (§2.5), so it can help map a known, human-readable, unit-and-type-annotated name
+onto an object ID encountered while reverse-engineering the native protocol's compound
+objects (<code>ValuesAll</code>, etc.) — used below to cross-validate the decoded layout against a live
+controller.</p>
+<h2 id="4-configurationtable-and-valuesall-compound-object-layout">4. <code>ConfigurationTable</code> and <code>ValuesAll</code> — compound object layout</h2>
+<p><code>ValuesAll</code> (C.O. 24560) and friends (<code>ValueStatesAll</code>, <code>ValueStatesAndDataAll</code>,
+<code>SetpointsAll</code>) are not a fixed schema — each individual value/setpoint's raw bytes live at
+an offset determined by the controller's own <code>ConfigurationTable</code> (C.O. 24575, ~100KB on the
+hardware this was validated against). Decoding one requires decoding the other first.</p>
+<p>Reverse-engineered from decompiled <code>ComAp.Controller.dll</code>
+(<code>ConfigurationTableLoaderIL3.LoadValueDescriptionFromStream</code>,
+<code>CommonLoadValuesFromStream</code>), then byte-for-byte verified against a live controller's raw
+<code>ConfigurationTable</code> and cross-checked against <code>cfgmodbus.txt</code>'s independently-exported
+Modbus table (e.g. C.O. 8235 decodes to category <code>First</code>/type <code>Binary16</code> in both, and a live
+read of "Mains Voltage L1-N" (C.O. 8195) decoded to a plausible 224V while "Generator
+Voltage"/RPM read 0 — consistent with the generator being idle at capture time).</p>
+<p>Implemented in <code>pycomap.configuration</code> for the <strong>InteliLite3 (IL3)</strong> binary format only
+(<code>ControllerType</code> byte 14 at offset 6 of the table) — this is the only hardware it's been
+validated against; other controller families (IGSNT, ID/IDMobile, etc.) use different binary
+layouts and aren't supported.</p>
+<p><strong>Value section</strong> (offset 50 onward): four <code>uint16</code> counts (categories <code>First</code>/<code>Second</code>/
+<code>Third</code>/<code>OneTime</code>), a redundant total count, four per-category data-lengths, a redundant
+total data-length, three per-category state-lengths (no <code>OneTime</code> state), a redundant total
+state-length, three <code>uint16</code> refresh periods (ms, one per non-<code>OneTime</code> category), then two
+32-bit addresses: one to a flat list of value <code>Number</code>s (<code>uint16</code>, count = sum of all four
+category counts, in category order), one to a flat array of fixed 13-byte detail records (one
+per <code>Number</code>, same order):</p>
+<ul>
+<li>bytes 0-3 (<code>uint32</code> LE): bits 0-11 = <code>name_index</code> (12 bits, into the <code>CommonNames</code> heap
+  category), bits 12-17 = <code>dim_index</code> (6 bits, into the <code>Dimensions</code> heap category), bits
+  18-20 = <code>decimal_places</code> (3 bits), <strong>bit 23 = <code>var_low_limit</code></strong>, <strong>bit 24 = <code>var_high_limit</code></strong>
+  — the remaining bits are conversion/switch metadata, not decoded.
+  When <code>var_low_limit</code> / <code>var_high_limit</code> is set, the corresponding limit field holds a
+  <em>setpoint index</em> (not a literal limit value) pointing to a setpoint that acts as the dynamic
+  bound; ignore that limit for range validation purposes.</li>
+<li>bytes 4-7 (<code>uint32</code> LE): <strong>bits 1-10 = <code>bit_name_index</code></strong> (10 bits, sentinel <code>1023</code> = none —
+  for <code>BINARY*</code> types, the index into <code>CommonNames</code> of the first bit label; bit 0 → entry at
+  <code>bit_name_index</code>, bit 1 → <code>bit_name_index + 1</code>, etc.), bits 11-20 = <code>state_index</code> (10 bits,
+  sentinel <code>1023</code> = no state), bits 21-30 = <code>data_index</code> (10 bits) — both <code>state_index</code> and
+  <code>data_index</code> are <em>absolute</em> offsets across the combined <code>First+Second+Third</code> region</li>
+<li>byte 8: <code>DataTypeIdentifier</code> (full byte)</li>
+<li>bytes 9-10, 11-12: low/high limit (<code>uint16</code> each, always present); for <code>INTEGER8</code>/<code>INTEGER16</code>/
+  <code>INTEGER32</code> types the raw <code>uint16</code> is reinterpreted as <code>int16</code> (same 2-byte storage — IL3
+  always uses 16-bit limits even for INTEGER32)</li>
+</ul>
+<p><code>decimal_places</code> (3 bits, max 7): a scaling exponent. The wire integer is divided by
+<code>10^decimal_places</code> to get the physical value — e.g. <code>decimal_places=1</code>, raw wire <code>150</code> →
+<code>15.0</code>. For <code>FLOAT</code> the stored bytes are IEEE-754 and <code>decimal_places</code> is always 0.</p>
+<p><code>STRING_LIST</code> values in <code>ValuesAll</code>: the raw 1-byte value is a direct option index with no
+<code>low_limit</code> offset — unlike <code>STRING_LIST</code> <em>setpoints</em>, where <code>CommonNames[low_limit + wire_value]</code>
+is the label. For values, use <code>BINARY*</code>-style bit queries or raw-byte inspection; there's no
+<code>value_options()</code> API (values aren't writable, so the options list is informational only).</p>
+<p><code>OneTime</code> category values are excluded entirely from <code>ValuesAll</code>/<code>ValueStatesAndDataAll</code>.
+<code>ValueStatesAndDataAll</code> is the data region (sized to the highest <code>data_index +
+data_length</code> among non-<code>OneTime</code> values — gaps between values are possible, so this is <em>not</em>
+simply the sum of all lengths) followed by the state region.</p>
+<p><strong><code>ValueStatesAll</code> byte layout</strong>: one byte per value that has a <code>state_index</code> (sentinel <code>1023</code>
+= not present); <code>state_index</code> is the <em>byte offset</em> into <code>ValueStatesAll</code>. Each byte:</p>
+<table>
+<thead>
+<tr>
+<th>bits</th>
+<th>field</th>
+<th>encoding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-2</td>
+<td><code>level1</code></td>
+<td>direct <code>ProtectionState</code> cast</td>
+</tr>
+<tr>
+<td>3-5</td>
+<td><code>level2</code></td>
+<td>direct <code>ProtectionState</code> cast</td>
+</tr>
+<tr>
+<td>6-7</td>
+<td><code>sensor_fail</code></td>
+<td>raw value left-shifted by 1: raw <code>1</code> → <code>ACTIVE</code>, raw <code>2</code> → <code>NOT_CONFIRMED</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>ProtectionState</code> values: <code>NOT_ACTIVE=0</code>, <code>DELAY=1</code>, <code>ACTIVE=2</code>, <code>NOT_CONFIRMED=4</code> (combinable
+flag — <code>ACTIVE | NOT_CONFIRMED</code> = 6 means the alarm is active but the operator hasn't pressed
+Fault Reset yet). <code>ValueState.any_alarm</code> is True when any level's <code>ACTIVE</code> bit is set.
+Implemented in <code>pycomap.configuration.decode_states_all</code>; exposed as
+<code>Controller.read_value_states()</code>.</p>
+<p><code>DataTypeIdentifier</code> byte lengths (<code>DataTypeLength</code> in the decompiled source): 1 byte —
+<code>Integer8</code>/<code>Unsigned8</code>/<code>Binary8</code>/<code>Char</code>/<code>StringList</code>; 2 bytes — <code>Integer16</code>/<code>Unsigned16</code>/
+<code>Binary16</code>; 3 bytes — <code>Ftime</code>/<code>Fdate</code>; 4 bytes — <code>Integer32</code>/<code>Unsigned32</code>/<code>Float</code>/<code>Binary32</code>;
+8 bytes — <code>Timer</code>; 16 bytes — <code>ShortString</code>/<code>IpAddress</code>; 32 bytes — <code>LongString</code>/
+<code>TelephoneNumber</code>; 64 bytes — <code>HugeString</code>/<code>Email</code>. <code>Domain</code> and <code>Date</code> have no fixed length
+and aren't decoded.</p>
+<h3 id="41-names-heap">4.1 Names heap</h3>
+<p><code>name_index</code>/<code>dim_index</code> resolve to human-readable strings through the "unified names heap"
+(<code>ConfigurationTableLoaderIL3.InternalLoadNamesFromUnifiedHeap</code> in the decompiled source).
+Verified end-to-end against a live controller: resolving <code>name_index</code>/<code>dim_index</code> for known
+C.O.#s (8235, 8239, 8192, 10034, ...) reproduces <code>cfgmodbus.txt</code>'s names/dimensions exactly
+(e.g. C.O. 8195 -&gt; name <code>"Mains Voltage L1-N"</code>, dimension <code>"V"</code>).</p>
+<p>There's one level of indirection: an "access vector" maps a 0-based index to a byte offset
+into a separate "heap contents" blob of length-prefixed UTF-8 strings. Both are per-language;
+this only decodes the first/default language.</p>
+<ul>
+<li>offset 169 (<code>DescrLangOffset</code>, IL3-specific): <code>uint32</code> address of language 0's record.</li>
+<li>that record's offset +6 (<code>NamesHeapAccessVectorOffset</code>): <code>uint32</code> address of the access
+  vector. Offset +10 (<code>NamesHeapContentsOffset</code>): <code>uint32</code> address of the heap contents.</li>
+<li>access vector items are <code>uint16</code> if <code>ConfigFormatTerminal &lt;= 3</code> (byte 5 of the table) else
+  <code>uint32</code> (this controller: <code>ConfigFormatTerminal = 4</code>, so <code>uint32</code>).</li>
+<li>each names <em>category</em> (<code>CommonNames</code>, <code>Dimensions</code>, etc.) has its own fixed, absolute
+  <code>(count_offset, base_index_offset)</code> pair, hardcoded per category in
+  <code>ConfigurationTableLoaderIL3.GetNamesCategoryOffset</code> (base address <code>503</code>). All categories
+  share one access vector + heap per language, at disjoint <code>[base_index, base_index + count)</code>
+  ranges. Known categories:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>count_offset</th>
+<th>base_index_offset</th>
+<th>count type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Dimensions</code></td>
+<td>505</td>
+<td>503</td>
+<td>1-byte (<code>numNamesIsByte: true</code>)</td>
+</tr>
+<tr>
+<td><code>GroupNames</code></td>
+<td>515</td>
+<td>513</td>
+<td>1-byte</td>
+</tr>
+<tr>
+<td><code>HistoryPrefixNames</code></td>
+<td>525</td>
+<td>523</td>
+<td>1-byte</td>
+</tr>
+<tr>
+<td><code>HistoryReasonNames</code></td>
+<td>528</td>
+<td>526</td>
+<td><code>uint16</code></td>
+</tr>
+<tr>
+<td><code>AlarmReasonNames</code></td>
+<td>532</td>
+<td>530</td>
+<td><code>uint16</code></td>
+</tr>
+<tr>
+<td><code>CommonNames</code></td>
+<td>594</td>
+<td>592</td>
+<td><code>uint16</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>GroupNames</code> ordering within the <code>CreateNamesOffsetDescription</code> list: Dimensions (+0 bytes),
+  FixedNames (+3), SetpointLimitNames (+7), GroupNames (+10) — each entry is 2 bytes for the
+  <code>base_index_offset</code> plus 1 byte (byte count) or 2 bytes (uint16 count) for <code>count_offset</code>.</p>
+<p><code>HistoryPrefixNames</code> on the test hardware: <code>['-', 'Wrn', 'Sd', 'Stp', 'LoP', 'Fls', 'OfL',
+  'BOC', 'MP', 'Hst', 'ALI', 'AHI', 'ECU', 'BO']</code> — same heap used by both the alarm list
+  (§4.3) and history records (§4.4). Index 0 is <code>'-'</code> (info/status, no protection class).
+- to resolve index <code>j</code> in category <code>C</code>: read <code>uint16</code>/<code>uint32</code> at
+  <code>access_vector_addr + item_size * (base_index[C] + j)</code> -&gt; a byte offset into heap contents;
+  at <code>heap_contents_addr + offset</code>, a single length byte followed by that many UTF-8 bytes is
+  the name.</p>
+<p>Implemented in <code>pycomap.configuration.parse_names_heap</code>; <code>parse_configuration_table</code> resolves
+every value's <code>name</code>/<code>dimension</code> through it automatically.</p>
+<h3 id="42-setpoints">4.2 Setpoints</h3>
+<p><code>SetpointsAll</code> (C.O. 24559) follows the same "offset computed from <code>ConfigurationTable</code>"
+pattern as values, but is simpler: there's no <code>OneTime</code>-style exclusion (every setpoint, <code>P</code>
+or <code>R</code> category, is included) and no per-setpoint state.</p>
+<p>Verified end-to-end against a live controller: decoding reproduces the exact, physically
+sane configured values for e.g. C.O. 8276 "Nominal Power" -&gt; 15.0 kW, C.O. 8277 "Nominal
+Voltage Ph-N" -&gt; 231V, C.O. 8253 "Nominal RPM" -&gt; 3000 RPM — all matching <code>cfgmodbus.txt</code>'s
+names/dimensions exactly.</p>
+<p><strong>Setpoint section</strong> (offset 98 onward): two <code>uint16</code> counts (categories <code>P</code>/<code>R</code>), a
+redundant total count, two per-category data-lengths, a redundant total data-length, then two
+32-bit addresses (id list, detail records) — same shape as the value section but with only
+two categories and no state-length/refresh-period fields. Each detail record is a <em>fixed</em> 14
+bytes (initially assumed variable-length because of conditionally-called helper methods in
+the decompiled source — <code>SetSubstitutedSetpointInfo</code>, <code>SetSetpointDefaultValue</code>,
+<code>SetSetpointIL3SpecificAttributes</code> — but all three save/restore the stream position around
+their own absolute-offset reads, so none of them actually advance the main per-record
+cursor):</p>
+<ul>
+<li>bytes 0-3 (<code>uint32</code> LE): bits 0-11 = <code>name_index</code>, bits 12-17 = <code>dim_index</code> (same heap
+  categories as values), <strong>bits 24-31 = <code>access_level</code></strong> (8 bits — 0 = no password required,
+  non-zero = password required before the controller will accept a write)</li>
+<li>byte 4: bits 4-6 = <code>decimal_places</code> (3 bits)</li>
+<li>byte 5: <code>DataTypeIdentifier</code></li>
+<li>bytes 6-9 (<code>uint32</code> LE): <strong>bit 1 = <code>var_low_limit</code></strong>, <strong>bit 2 = <code>var_high_limit</code></strong>
+  (same semantics as the value record flags — when set, the corresponding limit is a setpoint
+  index, not a literal value), bits 13-23 = <code>data_index</code> (11 bits, <em>absolute</em> offset across the
+  combined <code>P+R</code> region)</li>
+<li>bytes 10-11, 12-13: low/high limit (<code>uint16</code> each, always present); same signed reinterpretation
+  as value records for <code>INTEGER*</code> types</li>
+</ul>
+<p>Implemented in <code>pycomap.configuration._parse_setpoints</code>/<code>decode_setpoints_all</code>.</p>
+<p>Writing a setpoint is just <code>client.write_object(setpoint.number, encode_raw_value(...))</code> —
+confirmed live (<code>8315</code> "Controller Mode", access level low enough to need no elevation;
+<code>8301</code> "Emergency Start Delay", which did). The controller enforces per-setpoint
+<code>access_level</code> (surfaced on <code>SetpointDescription.access_level</code>; <code>needs_password</code> is True
+when non-zero) — see §2.4.1 for how to raise the session's access level via
+<code>ComApClient.elevate_access</code> before writing a setpoint that requires it. <code>encode_raw_value</code>
+is the write-side inverse of <code>decode_raw_value</code>; the controller itself rejects out-of-range
+writes with <code>ControllerError.BAD_WRITE_VALUE</code>.</p>
+<p><code>STRING_LIST</code> values and setpoints: the wire value is a 0-based index offset from <code>low_limit</code>
+into <code>CommonNames</code> — <code>label = CommonNames[low_limit + wire_value]</code>. Valid wire range is
+<code>0 .. (high_limit - low_limit)</code> (unless <code>var_high_limit</code> is set). <code>Controller.read_values()</code>
+resolves these to their label strings automatically; <code>Controller.value_label(name, wire_value)</code>
+resolves a single value. Setpoint options are exposed via
+<code>Controller.setpoint_options(name_or_number)</code> → <code>[(wire_value, label), ...]</code>.</p>
+<p>Not yet implemented:
+- <code>String</code>/<code>Domain</code>/<code>Timer</code>/<code>Date</code>-typed values: returned as raw bytes by
+  <code>pycomap.configuration.decode_raw_value</code>, not decoded further (their <code>name</code>/<code>dimension</code> are
+  still resolved correctly, only the data payload isn't).</p>
+<h3 id="43-alarm-list">4.3 Alarm list</h3>
+<p><code>AlarmList</code> (C.O. 24545, 112 bytes) is a flat array of up to <strong>16 × 7-byte</strong> records
+(remaining slots are zeroed). Each 7-byte record: <code>uint32</code> dw + <code>uint16</code> flags + <code>uint8</code>
+source. Parsing stops at the first unused slot.</p>
+<p><strong><code>is_used</code></strong>: bit 31 of <code>dw</code> must be 1, <em>and</em> the record must not be the all-<code>0xFF</code> sentinel
+(<code>dw==0xFFFFFFFF and flags==0xFFFF and source==0xFF</code>).</p>
+<p><strong><code>flags</code> bit layout:</strong></p>
+<table>
+<thead>
+<tr>
+<th>bits</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-2</td>
+<td><code>kind</code> — <code>7</code> = ComAp (standard); other values = ECU/CAN alarms</td>
+</tr>
+<tr>
+<td>3-13</td>
+<td><code>reason_index</code> — index into <code>AlarmReasonNames</code> heap category</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>is_active</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>is_confirmed</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>dw</code> bit layout:</strong></p>
+<table>
+<thead>
+<tr>
+<th>bits</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-18</td>
+<td><code>fault_code</code> — raw ECU fault code (non-zero only for non-ComAp kinds)</td>
+</tr>
+<tr>
+<td>19-23</td>
+<td><code>prefix_index</code> — index into <code>HistoryPrefixNames</code> heap category</td>
+</tr>
+<tr>
+<td>24-30</td>
+<td><code>occurred</code> — occurrence counter</td>
+</tr>
+<tr>
+<td>31</td>
+<td><code>is_used</code> sentinel (must be 1)</td>
+</tr>
+</tbody>
+</table>
+<p>For <code>kind == 7</code> (ComAp): <code>reason = AlarmReasonNames[reason_index]</code>, <code>prefix =
+HistoryPrefixNames[prefix_index]</code>. For other kinds: <code>reason</code> and <code>prefix</code> are empty; the ECU
+fault code is in <code>fault_code</code>.</p>
+<p>Implemented in <code>pycomap.alarms.parse_alarm_list</code>; exposed as <code>Controller.read_alarms()</code>.
+<code>HistoryPrefixNames</code> heap contents and offsets: see §4.1.</p>
+<h3 id="44-history-records">4.4 History records</h3>
+<p><code>YoungestHistoryRecord</code> (C.O. 24569) and <code>OlderHistoryRecord</code> (C.O. 24567) each return one
+<strong>69-byte</strong> record. Fetch in sequence to walk backward through the ring buffer.</p>
+<p><strong>Wire layout</strong> (<code>ClientDrivenHistorySerializer.LoadHeaderIL3</code> + <code>HistoryTimeStamp.LoadDefinedByHistRecord</code> in <code>ComAp.Controller.dll</code>):</p>
+<table>
+<thead>
+<tr>
+<th>bytes</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-1</td>
+<td><code>uint16</code> LE — bits 0-11 = <code>reason_index</code>, bits 13-14 = <code>reason_category</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>bits 0-4 = <code>prefix_index</code>, bits 5-7 = <code>level</code></td>
+</tr>
+<tr>
+<td>3-11</td>
+<td>9-byte timestamp (see below)</td>
+</tr>
+<tr>
+<td>12-68</td>
+<td>57-byte payload (see below)</td>
+</tr>
+</tbody>
+</table>
+<p><code>prefix_index</code> sentinels: <strong>30</strong> = text record (payload is null-terminated ASCII); <strong>31</strong> =
+invalid/unused slot, skip.</p>
+<p><code>reason_category</code>: 0 = <code>HistoryReasonNames</code>, 1 = <code>CommonNames</code>, 2 = <code>DiagNames</code> (ECU
+diagnostic codes — not yet implemented, returns empty string), 3 = <code>AlarmReasonNames</code>.</p>
+<p><code>prefix_index = 0</code> maps to <code>'-'</code> (info/status event, no protection class). <code>HistoryPrefixNames</code>
+heap contents and offsets: see §4.1.</p>
+<p><strong>Timestamp (9 bytes, <code>DefinedByHistRecord</code> format):</strong></p>
+<table>
+<thead>
+<tr>
+<th>byte(s)</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>BCD(day)</td>
+</tr>
+<tr>
+<td>1</td>
+<td>BCD(month)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>BCD(year − 2000)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>BCD(hour)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>BCD(minute)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>BCD(second)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>bit 7 = type (0 = wall-clock RTC, 1 = engine-hours counter); bits 0-3 = tenths-of-second</td>
+</tr>
+<tr>
+<td>7-8</td>
+<td><code>uint16</code> LE = sequential record index (ring-buffer position)</td>
+</tr>
+</tbody>
+</table>
+<p>For engine-hours records, bytes 0-3 reinterpret as a single <code>uint32</code> LE where bits 0-23 =
+total hours and bits 24-31 = minutes.</p>
+<p><strong>57-byte payload:</strong></p>
+<ul>
+<li><strong>Text records</strong> (<code>prefix_index == 30</code>): null-terminated ASCII string describing the
+  configuration change (e.g. <code>"T=ETH CA1 A CON(24554)=21:25:08"</code>).</li>
+<li><strong>Alarm/event records</strong>: a snapshot of the first 57 bytes of <code>ValuesAll</code>, captured at the
+  moment of the event. The byte layout is identical to the live <code>ValuesAll</code> blob — each
+  value's raw bytes sit at its <code>data_index</code> byte offset, with the same data type and
+  decimal-place encoding. Values whose <code>data_index + data_length &gt; 57</code> are absent from the
+  snapshot. On the test hardware this covers 31 values: <code>Binary Inputs</code> (data_index=0) through
+  <code>Load Power Factor</code> (data_index=56, 1 byte). Decoded via
+  <code>pycomap.configuration.decode_history_snapshot(table, record.data)</code> or
+  <code>Controller.decode_history_snapshot(record)</code>.</li>
+</ul>
+<h3 id="45-group-table">4.5 Group table</h3>
+<p>The <code>ConfigurationTable</code> contains a <code>GroupDescription</code> section that assigns every value and
+setpoint to a human-readable group (Engine, Generator, Load, Mains, Controller I/O, Statistics,
+Invisible, CM-4G-GPS, …). This is what InteliConfig uses for its "Group / Subgroup" columns
+and what the controller front panel uses to organise its menu.</p>
+<p>Source: <code>ConfigurationTableLoaderIL3.LoadGroupDescriptionFromStream</code> and
+<code>ConfigurationTableLoader.CommonLoadGroupsFromStream</code> in <code>ComAp.Controller.dll</code>.</p>
+<p><strong>Header (IL3-specific fixed offsets):</strong></p>
+<ul>
+<li>offset 134: <code>uint16</code> — number of groups</li>
+<li>offset 136: <code>uint32</code> — absolute offset of the <code>GroupDescription</code> records array</li>
+</ul>
+<p><strong>Per-<code>GroupDescription</code> record (11 bytes):</strong></p>
+<table>
+<thead>
+<tr>
+<th>bytes</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-1 (<code>uint16</code> w1)</td>
+<td>bits 0-7 = <code>contents_id</code>; bits 8-12 = <code>num_subgroups</code>; bit 13 = <code>is_invisible_internal</code></td>
+</tr>
+<tr>
+<td>2-3 (<code>uint16</code> w2)</td>
+<td>bits 0-8 = value-hiding condition index; bits 9-15 = <code>num_items</code> (7 bits)</td>
+</tr>
+<tr>
+<td>4-5 (<code>uint16</code> w3)</td>
+<td>bits 0-8 = setpoint-hiding condition index; bits 9-14 = <code>name_idx</code> (6 bits into <code>GroupNames</code>); bit 15 = <code>is_fast_access</code></td>
+</tr>
+<tr>
+<td>6-7 (<code>uint16</code>)</td>
+<td><code>items_offset</code> — absolute offset of this group's item list</td>
+</tr>
+<tr>
+<td>8-9 (<code>uint16</code>)</td>
+<td><code>subgroups_offset</code> — absolute offset of this group's subgroup list</td>
+</tr>
+<tr>
+<td>10 (byte)</td>
+<td>bit 0 = <code>is_sealed</code>; bit 1 = <code>is_invisible_external</code></td>
+</tr>
+</tbody>
+</table>
+<p>Group name: <code>GroupNames[name_idx]</code> (see §4.1 for the <code>GroupNames</code> heap offsets).</p>
+<p><strong>Per-item record (4 bytes):</strong></p>
+<table>
+<thead>
+<tr>
+<th>bytes</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-1 (<code>uint16</code> iw1)</td>
+<td>bits 0-1 = <code>CommunicationObjectType</code> (0 = value, 1 = setpoint); bits 2-12 = <code>object_index</code> (0-based index into the values or setpoints array)</td>
+</tr>
+<tr>
+<td>2-3 (<code>uint16</code> iw2)</td>
+<td>bits 0-10 = visibility condition index</td>
+</tr>
+</tbody>
+</table>
+<p><code>GroupTableBaseOffset = 0</code> for IL3 — <code>items_offset</code> and <code>subgroups_offset</code> are absolute offsets
+into the <code>ConfigurationTable</code> blob.</p>
+<p><strong>Coverage on the test hardware (FV 15000, 34 groups total):</strong></p>
+<p>All 325 values and all 429 setpoints appear in exactly one group. Notable groups: <code>Engine</code> (18
+values), <code>Generator</code> (11), <code>Load</code> (23), <code>Mains</code> (7), <code>Controller I/O</code> (8), <code>Statistics</code> (19),
+<code>Invisible</code> (102 — internal signals, excluded from the <code>status.py</code> example by default),
+<code>PLC</code> (47), <code>CM-4G-GPS</code> (14).</p>
+<p>Implemented in <code>pycomap.configuration._parse_group_map</code>; <code>parse_configuration_table</code>
+populates <code>ValueDescription.group</code> / <code>SetpointDescription.group</code> (<code>str | None</code>) automatically.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
