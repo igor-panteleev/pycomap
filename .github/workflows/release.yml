@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  pages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check && uv run ruff format --check
+
+      - name: Type check
+        run: uv run ty check
+
+      - name: Unit tests
+        run: uv run pytest tests/unit -q
+
+      - name: Detect pre-release
+        id: pre
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(a|b|rc)[0-9]+ ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build
+        run: uv build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ steps.pre.outputs.is_prerelease == 'true' }}
+          files: dist/*
+
+      - name: Deploy docs to GitHub Pages
+        if: steps.pre.outputs.is_prerelease == 'false'
+        run: uv run mkdocs gh-deploy --force
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

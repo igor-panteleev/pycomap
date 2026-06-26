@@ -1,0 +1,64 @@
+site_name: pycomap
+site_url: https://igor-panteleev.github.io/pycomap/
+site_description: Async Python client for ComAp controllers
+
+theme:
+  name: material
+  icon:
+    logo: material/generator-stationary
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: slate
+      primary: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            show_if_no_docstring: false
+            merge_init_into_class: true
+
+nav:
+  - Home: index.md
+  - API Reference:
+    - Controller: api/controller.md
+    - Low-level Client: api/client.md
+    - Configuration: api/configuration.md
+    - Data Types: api/datatypes.md
+    - Discovery: api/discovery.md
+    - Alarms: api/alarms.md
+    - History: api/history.md
+    - Exceptions: api/exceptions.md
+  - Protocol Notes: protocol.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite

@@ -1,0 +1,73 @@
+[project]
+name = "pycomap"
+version = "0.1.0"
+description = "Async Python client for ComAp controllers: LAN discovery and the native ECDH/AES-encrypted control protocol"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Igor Panteleyev", email = "panteleev.igor69@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "cryptography>=42",
+    "pytz>=2026.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6,<2",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+    "pre-commit>=4.6.0",
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=7.1.0",
+    "pytest-env>=1.6.0",
+    "pytest-mock>=3.15.1",
+    "ruff>=0.15",
+    "ty>=0.0.16",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: requires real ComAp hardware reachable on the network (set PYCOMAP_TEST_HOST, see .env.example)",
+]
+
+[tool.pytest_env]
+env_files = [".env"]
+
+[tool.coverage.run]
+source = ["src/pycomap"]
+omit = ["tests/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "C4",  # flake8-comprehensions
+    "RUF", # ruff-specific
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pycomap"]
+
+[tool.ty.environment]
+python-version = "3.13"
+
+[tool.uv]
+publish-url = "https://upload.pypi.org/legacy/"
