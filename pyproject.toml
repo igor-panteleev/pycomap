@@ -1,16 +1,28 @@
 [project]
 name = "pycomap"
-version = "1.0.0"
+version = "1.0.1rc1"
 description = "Async Python client for ComAp controllers: LAN discovery and the native ECDH/AES-encrypted control protocol"
 readme = "README.md"
 license = "MIT"
 authors = [
     { name = "Igor Panteleyev", email = "panteleev.igor69@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "cryptography>=42",
     "pytz>=2026.2",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Home Automation",
+    "Topic :: System :: Hardware",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
 ]
 
 [build-system]
@@ -49,7 +61,7 @@ omit = ["tests/*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
@@ -67,7 +79,7 @@ select = [
 known-first-party = ["pycomap"]
 
 [tool.ty.environment]
-python-version = "3.13"
+python-version = "3.14"
 
 [tool.uv]
 publish-url = "https://upload.pypi.org/legacy/"
