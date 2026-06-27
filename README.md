@@ -3,10 +3,6 @@
 Async Python client for ComAp controllers (InteliLite AMF25 and likely compatible
 siblings): LAN discovery and the native ECDH/AES-encrypted control protocol on port 23.
 
-Reverse-engineered from `ComAp.Controller.dll` and cross-validated against live hardware.
-
-Requires Python 3.13+. Dependencies: `cryptography`, `pytz`.
-
 ## Quick start
 
 ```python
