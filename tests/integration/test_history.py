@@ -84,7 +84,7 @@ async def test_controller_decode_history_snapshot(comap_host: str, comap_access_
     assert snapshot, "snapshot should contain decoded values"
     # All decoded values must be of a supported type
     for number, val in snapshot.items():
-        assert isinstance(val, (int, float, bytes)), f"unexpected type for value {number}"
+        assert isinstance(val, (int, float, bytes, str)), f"unexpected type for value {number}"
     # Binary Inputs (#8235) should always be present — it has data_index=0
     assert any(v is not None for v in snapshot.values())
 

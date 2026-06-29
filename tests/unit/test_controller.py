@@ -16,7 +16,7 @@ from pycomap.configuration import (
     parse_configuration_table,
 )
 from pycomap.controller import Controller, _encode_setpoint_value, _parse_gmt_label
-from pycomap.exceptions import ComApProtocolError
+from pycomap.exceptions import ComApAuthError, ComApProtocolError
 from tests.unit.builders import build_table, setpoint_record, value_record
 
 # ---------------------------------------------------------------------------
@@ -307,12 +307,22 @@ def _make_ctrl_with_table(mocker, table_data: bytes) -> Controller:
     ctrl._common_names = parse_names_heap(table_data, NamesCategory.COMMON_NAMES)
     ctrl._values_by_number = {v.number: v for v in ctrl._table.values}
     ctrl._values_by_name = {}
+    ctrl._ambiguous_value_names = set()
     for v in ctrl._table.values:
-        ctrl._values_by_name.setdefault(v.name, v)
+        if v.name in ctrl._values_by_name:
+            ctrl._ambiguous_value_names.add(v.name)
+        else:
+            ctrl._values_by_name[v.name] = v
     ctrl._setpoints_by_number = {s.number: s for s in ctrl._table.setpoints}
     ctrl._setpoints_by_name = {}
+    ctrl._ambiguous_setpoint_names = set()
     for s in ctrl._table.setpoints:
-        ctrl._setpoints_by_name.setdefault(s.name, s)
+        if s.name in ctrl._setpoints_by_name:
+            ctrl._ambiguous_setpoint_names.add(s.name)
+        else:
+            ctrl._setpoints_by_name[s.name] = s
+    ctrl._one_time_values = {}
+    ctrl._include_invisible = False
     return ctrl
 
 
@@ -354,6 +364,60 @@ def test_value_bit_names_no_bit_name_index_raises(mocker) -> None:
 
     with pytest.raises(ComApProtocolError, match="no bit name labels"):
         ctrl.value_bit_names(42)
+
+
+# ---------------------------------------------------------------------------
+# value_info / setpoint_info — ambiguous name detection
+# ---------------------------------------------------------------------------
+
+
+def test_value_info_raises_for_ambiguous_name(mocker) -> None:
+    # Both numbers [10, 20] get name_index=0 → "VOne" — duplicate name
+    table_data = build_table(
+        category_counts=(2, 0, 0, 0),
+        numbers=[10, 20],
+        records=[
+            value_record(data_type=DataType.UNSIGNED8, data_index=0, name_index=0),
+            value_record(data_type=DataType.UNSIGNED8, data_index=1, name_index=0),
+        ],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+
+    with pytest.raises(ComApProtocolError, match="ambiguous"):
+        ctrl.value_info("VOne")
+
+
+def test_value_info_by_number_works_despite_ambiguous_name(mocker) -> None:
+    table_data = build_table(
+        category_counts=(2, 0, 0, 0),
+        numbers=[10, 20],
+        records=[
+            value_record(data_type=DataType.UNSIGNED8, data_index=0, name_index=0),
+            value_record(data_type=DataType.UNSIGNED8, data_index=1, name_index=0),
+        ],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+
+    assert ctrl.value_info(10).number == 10
+    assert ctrl.value_info(20).number == 20
+
+
+def test_setpoint_info_raises_for_ambiguous_name(mocker) -> None:
+    table_data = build_table(
+        category_counts=(0, 0, 0, 0),
+        numbers=[],
+        records=[],
+        setpoint_category_counts=(2, 0),
+        setpoint_numbers=[100, 200],
+        setpoint_records=[
+            setpoint_record(data_type=DataType.UNSIGNED8, data_index=0, name_index=0),
+            setpoint_record(data_type=DataType.UNSIGNED8, data_index=1, name_index=0),
+        ],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+
+    with pytest.raises(ComApProtocolError, match="ambiguous"):
+        ctrl.setpoint_info("VOne")
 
 
 # ---------------------------------------------------------------------------
@@ -440,3 +504,221 @@ def test_resolve_raws_setpoint_string_list_uses_low_limit(mocker) -> None:
     # wire byte 0x00, low_limit=1 → idx=1 → "VTwo"
     result = ctrl._resolve_raws({500: b"\x00"}, ctrl._setpoints_by_number)
     assert result[500] == "VTwo"
+
+
+# ---------------------------------------------------------------------------
+# one_time_values / _cache_one_time_values
+# ---------------------------------------------------------------------------
+
+
+def _one_time_table() -> bytes:
+    return build_table(
+        category_counts=(0, 0, 0, 1),
+        numbers=[99],
+        records=[value_record(data_type=DataType.UNSIGNED8, data_index=0)],
+    )
+
+
+def test_one_time_values_is_read_only(mocker) -> None:
+    from types import MappingProxyType
+
+    ctrl = _make_ctrl_with_table(mocker, _one_time_table())
+    ctrl._one_time_values = {99: 42}
+
+    assert isinstance(ctrl.one_time_values, MappingProxyType)
+
+
+def test_one_time_values_empty_before_cache(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _one_time_table())
+    assert dict(ctrl.one_time_values) == {}
+
+
+async def test_cache_one_time_values_populates_property(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _one_time_table())
+    ctrl._client = mocker.AsyncMock()
+    ctrl._client.read_object.return_value = bytes([42])
+
+    await ctrl._cache_one_time_values()
+
+    assert ctrl.one_time_values[99] == 42
+
+
+async def test_cache_one_time_values_skips_failed_reads(mocker) -> None:
+    table_data = build_table(
+        category_counts=(0, 0, 0, 2),
+        numbers=[10, 20],
+        records=[
+            value_record(data_type=DataType.UNSIGNED8, data_index=0),
+            value_record(data_type=DataType.UNSIGNED8, data_index=0),
+        ],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+    ctrl._client = mocker.AsyncMock()
+    ctrl._client.read_object.side_effect = [Exception("timeout"), bytes([7])]
+
+    await ctrl._cache_one_time_values()
+
+    assert 10 not in ctrl.one_time_values
+    assert ctrl.one_time_values[20] == 7
+
+
+async def test_read_value_raises_for_one_time(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _one_time_table())
+
+    with pytest.raises(ComApProtocolError, match="ONE_TIME"):
+        await ctrl.read_value(99)
+
+
+def test_one_time_value_returns_cached(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _one_time_table())
+    ctrl._one_time_values = {99: 42}
+
+    assert ctrl.one_time_value(99) == 42
+
+
+def test_one_time_value_raises_if_not_in_cache(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _one_time_table())
+    # cache is empty (default)
+
+    with pytest.raises(ComApProtocolError, match="not in cache"):
+        ctrl.one_time_value(99)
+
+
+def test_one_time_value_raises_for_non_one_time(mocker) -> None:
+    table_data = build_table(
+        category_counts=(1, 0, 0, 0),
+        numbers=[10],
+        records=[value_record(data_type=DataType.UNSIGNED8, data_index=0)],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+
+    with pytest.raises(ComApProtocolError, match="not ONE_TIME"):
+        ctrl.one_time_value(10)
+
+
+# -- include_invisible filter ------------------------------------------------
+
+
+def _make_one_time_descs(mocker) -> tuple:
+    from pycomap.configuration import ValueCategory, ValueDescription
+
+    visible = ValueDescription(
+        number=10,
+        category=ValueCategory.ONE_TIME,
+        data_type=DataType.UNSIGNED8,
+        data_length=1,
+        decimal_places=0,
+        data_index=0,
+        state_index=None,
+        name="FW Version",
+        dimension="",
+        group=None,
+        low_limit=0,
+        high_limit=255,
+        var_low_limit=False,
+        var_high_limit=False,
+        bit_name_index=None,
+    )
+    invisible = ValueDescription(
+        number=20,
+        category=ValueCategory.ONE_TIME,
+        data_type=DataType.UNSIGNED8,
+        data_length=1,
+        decimal_places=0,
+        data_index=0,
+        state_index=None,
+        name="Application",
+        dimension="",
+        group="Invisible",
+        low_limit=0,
+        high_limit=255,
+        var_low_limit=False,
+        var_high_limit=False,
+        bit_name_index=None,
+    )
+    return visible, invisible
+
+
+def _make_ctrl_with_one_time_descs(mocker, *, include_invisible: bool):  # type: ignore[return]
+    from unittest.mock import AsyncMock
+
+    visible, invisible = _make_one_time_descs(mocker)
+    ctrl = Controller.__new__(Controller)
+    ctrl._include_invisible = include_invisible
+    ctrl._one_time_values = {}
+    ctrl._common_names = []
+    ctrl._values_by_number = {10: visible, 20: invisible}
+    mock_client = AsyncMock()
+    mock_client.read_object.return_value = bytes([42])
+    ctrl._client = mock_client
+    table_mock = mocker.Mock()
+    table_mock.values = [visible, invisible]
+    ctrl._table = table_mock
+    return ctrl, mock_client
+
+
+async def test_cache_one_time_values_skips_invisible_by_default(mocker) -> None:
+    ctrl, mock_client = _make_ctrl_with_one_time_descs(mocker, include_invisible=False)
+
+    await ctrl._cache_one_time_values()
+
+    assert 10 in ctrl.one_time_values
+    assert 20 not in ctrl.one_time_values
+    mock_client.read_object.assert_called_once_with(10)
+
+
+async def test_cache_one_time_values_includes_invisible_when_requested(mocker) -> None:
+    ctrl, mock_client = _make_ctrl_with_one_time_descs(mocker, include_invisible=True)
+
+    await ctrl._cache_one_time_values()
+
+    assert 10 in ctrl.one_time_values
+    assert 20 in ctrl.one_time_values
+    assert mock_client.read_object.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# elevate_access
+# ---------------------------------------------------------------------------
+
+
+async def test_elevate_access_raises_without_password(mocker) -> None:
+    from unittest.mock import AsyncMock
+
+    ctrl = Controller.__new__(Controller)
+    ctrl._elevated = False
+    ctrl._password = None
+    ctrl._client = AsyncMock()
+
+    with pytest.raises(ComApAuthError):
+        await ctrl.elevate_access()
+
+    ctrl._client.elevate_access.assert_not_called()
+
+
+async def test_elevate_access_sends_password(mocker) -> None:
+    from unittest.mock import AsyncMock
+
+    ctrl = Controller.__new__(Controller)
+    ctrl._elevated = False
+    ctrl._password = 1234
+    ctrl._client = AsyncMock()
+
+    await ctrl.elevate_access()
+
+    ctrl._client.elevate_access.assert_called_once_with(1234)
+    assert ctrl._elevated is True
+
+
+async def test_elevate_access_is_idempotent(mocker) -> None:
+    from unittest.mock import AsyncMock
+
+    ctrl = Controller.__new__(Controller)
+    ctrl._elevated = True
+    ctrl._password = 1234
+    ctrl._client = AsyncMock()
+
+    await ctrl.elevate_access()
+    await ctrl.elevate_access()
+
+    ctrl._client.elevate_access.assert_not_called()

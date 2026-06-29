@@ -21,6 +21,7 @@ import logging
 import socket
 import struct
 from dataclasses import dataclass, field
+from ipaddress import IPv4Address
 
 from pycomap.exceptions import ComApProtocolError
 from pycomap.protocol.framing import Operation, build_inner, parse_inner
@@ -70,7 +71,7 @@ class DiscoveryDevice:
     serial_number: int
     firmware_major_minor: int
     firmware_patch_build: int
-    ip: str
+    ip: IPv4Address
     mac: str
     comm_port: int
     access_type: AccessType
@@ -103,7 +104,7 @@ def _parse_device(data: bytes) -> DiscoveryDevice:
     else:
         firmware_patch_build = 0
 
-    ip = ".".join(str(b) for b in data[offset : offset + 4])
+    ip = IPv4Address(bytes(data[offset : offset + 4]))
     offset += 4
     mac = ":".join(f"{b:02x}" for b in data[offset : offset + 6])
     offset += 6
@@ -147,7 +148,7 @@ def _parse_device(data: bytes) -> DiscoveryDevice:
 
 async def discover(
     timeout: float = 2.0,
-    broadcast_address: str = "255.255.255.255",
+    broadcast_address: str | IPv4Address = "255.255.255.255",
 ) -> list[DiscoveryDevice]:
     """Broadcast a discovery probe and collect replies for ``timeout`` seconds.
 
@@ -161,11 +162,11 @@ async def discover(
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.setblocking(False)
 
-    found: dict[str, DiscoveryDevice] = {}
+    found: dict[IPv4Address, DiscoveryDevice] = {}
     try:
         sock.bind(("", 0))
         _log.debug("sending discovery probe to %s:%d", broadcast_address, DISCOVERY_PORT)
-        sock.sendto(_build_probe(), (broadcast_address, DISCOVERY_PORT))
+        sock.sendto(_build_probe(), (str(broadcast_address), DISCOVERY_PORT))
 
         end_time = loop.time() + timeout
         while True:

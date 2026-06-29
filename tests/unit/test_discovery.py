@@ -1,3 +1,5 @@
+from ipaddress import IPv4Address
+
 from pycomap.discovery import AccessType, DeviceType, _build_probe, _parse_device
 from pycomap.protocol.framing import parse_inner
 
@@ -23,7 +25,7 @@ def test_parse_device_matches_real_captured_reply() -> None:
 
     assert device.format_version == 1
     assert device.device_type is DeviceType.CM_ETHERNET
-    assert device.ip == "192.168.1.9"
+    assert device.ip == IPv4Address("192.168.1.9")
     assert device.mac == "68:69:f2:02:2e:86"
     assert device.comm_port == 23
     assert device.access_type is AccessType.IP_ADDRESS

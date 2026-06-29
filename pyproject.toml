@@ -1,6 +1,6 @@
 [project]
 name = "pycomap"
-version = "1.0.2"
+version = "1.1.0"
 description = "Async Python client for ComAp controllers: LAN discovery and the native ECDH/AES-encrypted control protocol"
 readme = "README.md"
 license = "MIT"

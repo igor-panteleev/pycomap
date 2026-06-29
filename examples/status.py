@@ -12,10 +12,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import itertools
+import logging
+import sys
 
 from pycomap import Controller, EthernetTransport
-from pycomap.configuration import ValueCategory, ValueDescription
+from pycomap.configuration import ValueDescription
 from pycomap.protocol import ComApClient
+
+logging.basicConfig(level=logging.DEBUG, handlers=[logging.StreamHandler(sys.stdout)])
 
 
 def _display(desc: ValueDescription, val: int | float | bytes | str) -> str:
@@ -35,17 +39,11 @@ async def main(host: str, access_code: str, history_count: int, show_invisible: 
     # -- Values (grouped by Group, fall back to ValueCategory) ----------------
     header = f"{'NAME':<40} {'VALUE':>12}  UNIT"
     rule = "-" * 60
-    group_key = lambda d: d.group or d.category.name  # noqa: E731
     visible = sorted(
-        (
-            d
-            for d in ctrl.values
-            if d.category is not ValueCategory.ONE_TIME
-            and (show_invisible or d.group != "Invisible")
-        ),
-        key=group_key,
+        (d for d in ctrl.values if show_invisible or d.group != "Invisible"),
+        key=lambda d: d.group,
     )
-    for group_label, group_iter in itertools.groupby(visible, key=group_key):
+    for group_label, group_iter in itertools.groupby(visible, key=lambda d: d.group):
         print(f"\n{group_label}")
         print(header)
         print(rule)

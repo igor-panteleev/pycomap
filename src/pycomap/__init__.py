@@ -29,12 +29,15 @@ from __future__ import annotations
 import logging
 
 from pycomap.controller import Controller
+from pycomap.datatypes import Value
 from pycomap.discovery import discover
 from pycomap.exceptions import (
     ComApAuthError,
     ComApConnectionError,
     ComApControllerError,
     ComApError,
+    ComApInvalidAccessCodeError,
+    ComApInvalidPasswordError,
     ComApProtocolError,
 )
 from pycomap.protocol import ComApClient, Command, ControllerCommand, EthernetTransport
@@ -47,10 +50,13 @@ __all__ = [
     "ComApConnectionError",
     "ComApControllerError",
     "ComApError",
+    "ComApInvalidAccessCodeError",
+    "ComApInvalidPasswordError",
     "ComApProtocolError",
     "Command",
     "Controller",
     "ControllerCommand",
     "EthernetTransport",
+    "Value",
     "discover",
 ]

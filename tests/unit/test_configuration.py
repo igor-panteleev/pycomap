@@ -84,7 +84,26 @@ def test_parse_and_decode_values_all() -> None:
     decoded = decode_values_all(table, values_all)
 
     assert decoded == {100: 0x1234, 200: 0x05}
-    assert 300 not in decoded  # OneTime values aren't part of ValuesAll
+    assert 300 not in decoded  # ONE_TIME values are not in ValuesAll
+
+
+def test_decode_values_all_skips_and_warns_non_one_time_value_beyond_blob(caplog) -> None:
+    import logging
+
+    # A non-ONE_TIME (FIRST category) value whose data_index exceeds the blob.
+    data = _build_table(
+        category_counts=(1, 0, 0, 0),
+        numbers=[42],
+        records=[_value_record(data_type=DataType.UNSIGNED16, data_index=10)],
+    )
+    table = parse_configuration_table(data)
+    blob = b"\x01\x02"  # only 2 bytes; value at data_index=10 does not fit
+
+    with caplog.at_level(logging.WARNING, logger="pycomap.configuration"):
+        result = decode_values_all(table, blob)
+
+    assert 42 not in result
+    assert "exceeds blob size" in caplog.text
 
 
 def test_parse_and_decode_setpoints_all() -> None:

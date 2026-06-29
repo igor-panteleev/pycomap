@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from ipaddress import IPv4Address
 from typing import Protocol, runtime_checkable
 
 from pycomap.exceptions import ComApConnectionError
@@ -48,13 +49,13 @@ class EthernetTransport:
     ECDH/AES framing on top.
     """
 
-    def __init__(self, host: str, port: int = DEFAULT_PORT) -> None:
+    def __init__(self, host: IPv4Address | str, port: int = DEFAULT_PORT) -> None:
         """
         Args:
-            host: Controller IP address or hostname.
+            host: Controller IP address (``IPv4Address`` or dotted string) or hostname.
             port: TCP port; defaults to ``23`` (ComAp native protocol port).
         """
-        self._host = host
+        self._host = str(host)
         self._port = port
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None

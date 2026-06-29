@@ -33,6 +33,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import functools
+import logging
 import struct
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -41,11 +42,14 @@ from pycomap.datatypes import (
     _DATA_TYPE_LENGTH,
     DataType,
     ProtectionState,
+    RawValue,
     decode_raw_value,
     encode_raw_value,
     get_bits,
 )
 from pycomap.exceptions import ComApProtocolError
+
+_log = logging.getLogger(__name__)
 
 __all__ = [
     "ConfigurationTable",
@@ -465,25 +469,34 @@ def _parse_setpoints(
     return setpoints
 
 
-def decode_values_all(table: ConfigurationTable, data: bytes) -> dict[int, int | float | bytes]:
+def decode_values_all(table: ConfigurationTable, data: bytes) -> dict[int, RawValue]:
     """Decode a ``ValuesAll`` (or the data portion of ``ValueStatesAndDataAll``) blob.
 
-    Returns a mapping of value ``number`` -> decoded value, for every value in
-    ``ValueCategory.FIRST``/``SECOND``/``THIRD`` (``ONE_TIME`` values are never included in
-    these communication objects).
+    Returns a mapping of value ``number`` -> decoded value for every
+    ``ValueCategory.FIRST``/``SECOND``/``THIRD`` value. ``ONE_TIME`` values are excluded
+    — they are not present in ``ValuesAll`` and must be read individually.
     """
-    result: dict[int, int | float | bytes] = {}
+    result: dict[int, RawValue] = {}
     for value in table.values:
         if value.category is ValueCategory.ONE_TIME:
             continue
-        raw = data[value.data_index : value.data_index + value.data_length]
+        end = value.data_index + value.data_length
+        if end > len(data):
+            _log.warning(
+                "value %r (number %d) data_index %d+%d exceeds blob size %d — skipping",
+                value.name,
+                value.number,
+                value.data_index,
+                value.data_length,
+                len(data),
+            )
+            continue
+        raw = data[value.data_index : end]
         result[value.number] = decode_raw_value(value.data_type, raw, value.decimal_places)
     return result
 
 
-def decode_history_snapshot(
-    table: ConfigurationTable, snapshot: bytes
-) -> dict[int, int | float | bytes]:
+def decode_history_snapshot(table: ConfigurationTable, snapshot: bytes) -> dict[int, RawValue]:
     """Decode the value snapshot from a ``HistoryRecord.data`` field.
 
     Alarm/event history records carry a snapshot of the first N bytes of the
@@ -497,7 +510,7 @@ def decode_history_snapshot(
     [decode_values_all][pycomap.configuration.decode_values_all]. ``ONE_TIME`` values
     are never included.  Returns an empty dict if ``snapshot`` is empty (text records).
     """
-    result: dict[int, int | float | bytes] = {}
+    result: dict[int, RawValue] = {}
     for value in table.values:
         if value.category is ValueCategory.ONE_TIME:
             continue
@@ -509,12 +522,12 @@ def decode_history_snapshot(
     return result
 
 
-def decode_setpoints_all(table: ConfigurationTable, data: bytes) -> dict[int, int | float | bytes]:
+def decode_setpoints_all(table: ConfigurationTable, data: bytes) -> dict[int, RawValue]:
     """Decode a ``SetpointsAll`` blob into a mapping of setpoint ``number`` -> decoded value.
 
     Unlike values, every setpoint (both ``P`` and ``R`` categories) is included.
     """
-    result: dict[int, int | float | bytes] = {}
+    result: dict[int, RawValue] = {}
     for setpoint in table.setpoints:
         raw = data[setpoint.data_index : setpoint.data_index + setpoint.data_length]
         result[setpoint.number] = decode_raw_value(setpoint.data_type, raw, setpoint.decimal_places)

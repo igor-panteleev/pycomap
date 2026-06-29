@@ -13,4 +13,4 @@ pytestmark = pytest.mark.integration
 
 async def test_discover_finds_controller(comap_host: str) -> None:
     devices = await discover(timeout=3.0)
-    assert any(device.ip == comap_host for device in devices)
+    assert any(str(device.ip) == comap_host for device in devices)
