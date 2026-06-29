@@ -24,8 +24,9 @@ from types import TracebackType
 
 from pycomap.datatypes import decode_fdate, decode_ftime, encode_fdate, encode_ftime
 from pycomap.exceptions import (
-    ComApAuthError,
     ComApControllerError,
+    ComApInvalidAccessCodeError,
+    ComApInvalidPasswordError,
     ComApProtocolError,
 )
 from pycomap.protocol import crypto
@@ -114,7 +115,7 @@ class ComApClient:
             access_code: The controller's base AccessCode (drives ECDH/AES key derivation).
 
         Raises:
-            ComApAuthError: If the controller rejects the access code.
+            ComApInvalidAccessCodeError: If the controller rejects the access code.
             ComApProtocolError: If the ECDH exchange produces an unexpected response.
         """
         server_pub_data = await self.read_object(CommunicationObject.ECDH_PUBLIC_KEY)
@@ -136,13 +137,13 @@ class ComApClient:
             nonce = await self.read_object(CommunicationObject.VERIFY_ACCESS_HASH)
         except ComApControllerError as exc:
             if exc.code not in _AUTH_FALLBACK_CODES:
-                raise ComApAuthError("access verification failed") from exc
+                raise ComApInvalidAccessCodeError("access verification failed") from exc
             _log.warning("hash auth not supported by controller, falling back to plain access code")
             source = access_code.encode("ascii").ljust(16, b"\x00")
             try:
                 await self.write_object(CommunicationObject.VERIFY_ACCESS, source)
             except ComApControllerError as exc2:
-                raise ComApAuthError("access code rejected by controller") from exc2
+                raise ComApInvalidAccessCodeError("access code rejected by controller") from exc2
             _log.info("authenticated via plain access code")
         else:
             digest = hashlib.md5(nonce + access_code.encode("ascii")).digest()
@@ -150,7 +151,7 @@ class ComApClient:
             try:
                 await self.write_object(CommunicationObject.VERIFY_ACCESS_HASH, credentials)
             except ComApControllerError as exc3:
-                raise ComApAuthError("access code rejected by controller") from exc3
+                raise ComApInvalidAccessCodeError("access code rejected by controller") from exc3
             _log.info("authenticated via hash")
 
     async def elevate_access(self, password: int) -> None:
@@ -175,7 +176,7 @@ class ComApClient:
                 CommunicationObject.PASSWORD_FOR_WRITE, struct.pack("<H", password)
             )
         except ComApControllerError as exc:
-            raise ComApAuthError(
+            raise ComApInvalidPasswordError(
                 "password rejected by controller (wrong password or brute-force lockout active)"
             ) from exc
         _log.info("write-protection password accepted")

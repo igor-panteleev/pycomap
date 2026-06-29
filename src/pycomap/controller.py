@@ -27,13 +27,15 @@ from __future__ import annotations
 import datetime
 import logging
 import re
-from types import TracebackType
+from collections.abc import Mapping
+from types import MappingProxyType, TracebackType
 
 from pycomap.alarms import AlarmRecord, parse_alarm_list
 from pycomap.configuration import (
     ConfigurationTable,
     NamesCategory,
     SetpointDescription,
+    ValueCategory,
     ValueDescription,
     ValueState,
     decode_history_snapshot,
@@ -47,6 +49,8 @@ from pycomap.datatypes import (
     _BINARY_TYPES,
     _DATA_TYPE_LENGTH,
     DataType,
+    RawValue,
+    Value,
     decode_raw_value,
     encode_raw_value,
 )
@@ -109,7 +113,7 @@ def _parse_gmt_label(label: str) -> datetime.timedelta | None:
 def _encode_setpoint_value(
     data_type: DataType,
     decimal_places: int,
-    value: int | float | str | bytes,
+    value: Value,
 ) -> bytes:
     if isinstance(value, bytes):
         return value
@@ -131,10 +135,9 @@ class Controller:
     """High-level async client for a ComAp controller.
 
     Fetches and caches the ``ConfigurationTable`` on [connect][pycomap.Controller.connect],
-    which enables
-    name-based lookup for all subsequent calls.  Password elevation for write-protected
-    setpoints is handled automatically (lazy, on first protected write) when ``password``
-    is provided.
+    enabling name-based lookup for all subsequent calls.  Password elevation for
+    write-protected setpoints is handled automatically (lazy, on first protected write)
+    when ``password`` is provided.
 
     Args:
         client: A ``ComApClient`` wrapping any transport.  The ``Controller`` takes
@@ -143,6 +146,9 @@ class Controller:
             ``"0"``).  Drives ECDH/AES key derivation — **not** the write password.
         password: The write-protection password (integer 0-9999).  Required for setpoints
             with ``access_level > 0``; omit to operate in read-only mode.
+        include_invisible: When ``False`` (default), ONE_TIME values in the ``'Invisible'``
+            group are skipped during connect, saving one ``read_object`` round-trip per
+            invisible item.  Set to ``True`` to cache them anyway.
 
     Examples:
         Read-only access::
@@ -167,20 +173,25 @@ class Controller:
         client: ComApClient,
         access_code: str,
         password: int | None = None,
+        include_invisible: bool = False,
     ) -> None:
         self._client = client
         self._access_code = access_code
         self._password = password
+        self._include_invisible = include_invisible
         self._elevated = False
         self._config_data: bytes | None = None
         self._table: ConfigurationTable | None = None
         self._values_by_name: dict[str, ValueDescription] = {}
         self._values_by_number: dict[int, ValueDescription] = {}
+        self._ambiguous_value_names: set[str] = set()
         self._setpoints_by_name: dict[str, SetpointDescription] = {}
         self._setpoints_by_number: dict[int, SetpointDescription] = {}
+        self._ambiguous_setpoint_names: set[str] = set()
         self._common_names: list[str] = []
         self._timezone: datetime.timezone = datetime.UTC
         self._summer_time_mode_raw: int = 0
+        self._one_time_values: dict[int, Value] = {}
 
     # -- connection lifecycle -------------------------------------------------
 
@@ -235,13 +246,21 @@ class Controller:
         """All setpoint descriptions from the cached ``ConfigurationTable``."""
         return self.table.setpoints
 
+    @property
+    def one_time_values(self) -> Mapping[int, Value]:
+        """Static ``ONE_TIME`` values read once at connect time.
+
+        Returns a read-only ``{comm_object_number: value}`` mapping for every ``ONE_TIME``
+        value successfully read during [connect][pycomap.Controller.connect]. Entries use
+        the same type and resolution rules as [read_values][pycomap.Controller.read_values].
+        Empty before connect; stable for the lifetime of the connection.
+        """
+        return MappingProxyType(self._one_time_values)
+
     # -- name / number resolution --------------------------------------------
 
     def value_info(self, name_or_number: str | int) -> ValueDescription:
         """Look up a value description by name or comm object number.
-
-        Names must match exactly as returned by the controller's names heap.
-        If multiple values share a name, the first one in the table is returned.
 
         Args:
             name_or_number: Exact value name (e.g. ``"RPM"``) or comm object number.
@@ -251,12 +270,18 @@ class Controller:
 
         Raises:
             KeyError: If no value with that name or number exists.
+            ComApProtocolError: If the name is shared by multiple values — use a number instead.
         """
         if isinstance(name_or_number, int):
             try:
                 return self._values_by_number[name_or_number]
             except KeyError:
                 raise KeyError(f"no value with number {name_or_number}") from None
+        if name_or_number in self._ambiguous_value_names:
+            raise ComApProtocolError(
+                f"value name {name_or_number!r} is ambiguous — "
+                "multiple values share this name; use a comm object number instead"
+            )
         try:
             return self._values_by_name[name_or_number]
         except KeyError:
@@ -273,12 +298,18 @@ class Controller:
 
         Raises:
             KeyError: If no setpoint with that name or number exists.
+            ComApProtocolError: If the name is shared by multiple setpoints — use a number instead.
         """
         if isinstance(name_or_number, int):
             try:
                 return self._setpoints_by_number[name_or_number]
             except KeyError:
                 raise KeyError(f"no setpoint with number {name_or_number}") from None
+        if name_or_number in self._ambiguous_setpoint_names:
+            raise ComApProtocolError(
+                f"setpoint name {name_or_number!r} is ambiguous — "
+                "multiple setpoints share this name; use a comm object number instead"
+            )
         try:
             return self._setpoints_by_name[name_or_number]
         except KeyError:
@@ -377,9 +408,9 @@ class Controller:
 
     def _resolve_raws(
         self,
-        raw: dict[int, int | float | bytes],
+        raw: dict[int, RawValue],
         by_number: dict[int, ValueDescription] | dict[int, SetpointDescription],
-    ) -> dict[int, int | float | bytes | str]:
+    ) -> dict[int, Value]:
         """Resolve ``STRING_LIST`` wire bytes to labels and text-typed bytes to strings.
 
         Works for both value and setpoint dicts.  ``STRING_LIST`` entries arrive as 1-byte
@@ -387,7 +418,7 @@ class Controller:
         Text-typed entries (``SHORT_STRING``, ``IP_ADDRESS``, etc.) arrive as null-padded
         byte strings and are decoded to ASCII.
         """
-        result: dict[int, int | float | bytes | str] = {}
+        result: dict[int, Value] = {}
         for number, val in raw.items():
             if not isinstance(val, bytes):
                 result[number] = val
@@ -402,12 +433,12 @@ class Controller:
                     self._common_names[idx] if idx < len(self._common_names) else str(wire)
                 )
             elif desc.data_type in _STRING_TYPES:
-                result[number] = val.rstrip(b"\x00").decode("ascii", "replace")
+                result[number] = val.split(b"\x00")[0].decode("ascii", "replace")
             else:
                 result[number] = val
         return result
 
-    async def read_values(self) -> dict[int, int | float | bytes | str]:
+    async def read_values(self) -> dict[int, Value]:
         """Read all values from ``ValuesAll`` (C.O. 24560).
 
         ``STRING_LIST`` values are resolved to their display label. Text-typed values
@@ -415,8 +446,9 @@ class Controller:
         values are ``int``, ``float``, or raw ``bytes`` (binary, domain, timer types).
 
         Returns:
-            ``{comm_object_number: value}`` for every value in the controller's table
-            except ``ONE_TIME`` category values, which are excluded from ``ValuesAll``.
+            ``{comm_object_number: value}`` for every value whose data fits within the
+            ``ValuesAll`` blob, including static ``ONE_TIME`` values (firmware version,
+            ID string, etc.).
 
         Examples:
             >>> values = await ctrl.read_values()
@@ -427,7 +459,7 @@ class Controller:
         data = await self._client.read_object(CommunicationObject.VALUES_ALL)
         return self._resolve_raws(decode_values_all(self.table, data), self._values_by_number)
 
-    async def read_setpoints(self) -> dict[int, int | float | bytes | str]:
+    async def read_setpoints(self) -> dict[int, Value]:
         """Read all setpoints from ``SetpointsAll`` (C.O. 24559).
 
         ``STRING_LIST`` setpoints are resolved to their display label, matching what
@@ -471,9 +503,7 @@ class Controller:
                 records.append(rec)
         return records
 
-    def decode_history_snapshot(
-        self, record: HistoryRecord
-    ) -> dict[int, int | float | bytes | str]:
+    def decode_history_snapshot(self, record: HistoryRecord) -> dict[int, Value]:
         """Decode the value snapshot embedded in an alarm ``HistoryRecord``.
 
         Alarm/event records carry a snapshot of the ``ValuesAll`` blob captured at the
@@ -497,12 +527,14 @@ class Controller:
 
     # -- individual read/write -----------------------------------------------
 
-    async def read_value(self, name_or_number: str | int) -> int | float | bytes | str:
+    async def read_value(self, name_or_number: str | int) -> Value:
         """Read a single value by name or number.
 
         Reads ``ValuesAll`` internally — use
         [read_values][pycomap.Controller.read_values] when you need multiple
-        values to avoid redundant round-trips.
+        values to avoid redundant round-trips. For ``ONE_TIME`` static values use
+        [one_time_value][pycomap.Controller.one_time_value] or
+        [one_time_values][pycomap.Controller.one_time_values].
 
         Args:
             name_or_number: Value name or comm object number.
@@ -512,18 +544,54 @@ class Controller:
 
         Raises:
             KeyError: If no value with that name or number exists.
-            ComApProtocolError: If the value is ``ONE_TIME`` category (not in ``ValuesAll``).
+            ComApProtocolError: If the name is shared by multiple values, or if the value
+                is ``ONE_TIME`` category — use ``one_time_value()`` instead.
         """
         desc = self.value_info(name_or_number)
+        if desc.category is ValueCategory.ONE_TIME:
+            raise ComApProtocolError(
+                f"value {desc.name!r} (number {desc.number}) is ONE_TIME — "
+                "use Controller.one_time_values instead"
+            )
         values = await self.read_values()
         if desc.number not in values:
             raise ComApProtocolError(
-                f"value {desc.name!r} (number {desc.number}) is ONE_TIME and not "
-                "included in ValuesAll"
+                f"value {desc.name!r} (number {desc.number}) is not present in ValuesAll"
             )
         return values[desc.number]
 
-    async def read_setpoint(self, name_or_number: str | int) -> int | float | bytes | str:
+    def one_time_value(self, name_or_number: str | int) -> Value:
+        """Return a cached ONE_TIME value by name or number (no network call).
+
+        ONE_TIME values are read once at connect time and stored in
+        [one_time_values][pycomap.Controller.one_time_values].
+
+        Args:
+            name_or_number: Value name or comm object number.
+
+        Returns:
+            Resolved value; strings are already null-stripped.
+
+        Raises:
+            KeyError: If no value with that name or number exists in the table.
+            ComApProtocolError: If the name is shared by multiple values, if the value
+                is not ``ONE_TIME`` category, or if it was not cached (e.g. skipped as
+                invisible or failed to read at connect).
+        """
+        desc = self.value_info(name_or_number)
+        if desc.category is not ValueCategory.ONE_TIME:
+            raise ComApProtocolError(
+                f"value {desc.name!r} (number {desc.number}) is not ONE_TIME — "
+                "use read_value() instead"
+            )
+        if desc.number not in self._one_time_values:
+            raise ComApProtocolError(
+                f"ONE_TIME value {desc.name!r} (number {desc.number}) is not in cache "
+                "(skipped as invisible or failed to read at connect)"
+            )
+        return self._one_time_values[desc.number]
+
+    async def read_setpoint(self, name_or_number: str | int) -> Value:
         """Read a single setpoint by name or number (one round-trip).
 
         Args:
@@ -543,8 +611,8 @@ class Controller:
     def _coerce_setpoint_value(
         self,
         desc: SetpointDescription,
-        value: int | float | str | bytes,
-    ) -> int | float | str | bytes:
+        value: Value,
+    ) -> Value:
         """Resolve and validate ``value`` for ``desc`` before encoding.
 
         - ``STRING_LIST`` + ``str``: looks up the label in
@@ -594,9 +662,7 @@ class Controller:
 
         return value
 
-    async def set_setpoint(
-        self, name_or_number: str | int, value: int | float | str | bytes
-    ) -> None:
+    async def set_setpoint(self, name_or_number: str | int, value: Value) -> None:
         """Write a setpoint by name or number.
 
         Args:
@@ -627,7 +693,7 @@ class Controller:
         """
         desc = self.setpoint_info(name_or_number)
         if desc.needs_password:
-            await self._ensure_elevated()
+            await self.elevate_access()
         value = self._coerce_setpoint_value(desc, value)
         raw = _encode_setpoint_value(desc.data_type, desc.decimal_places, value)
         await self._client.write_object(desc.number, raw)
@@ -744,7 +810,7 @@ class Controller:
         Raises:
             ComApAuthError: If write access is needed but no password was provided.
         """
-        await self._ensure_elevated()
+        await self.elevate_access()
         effective_tz: datetime.tzinfo = tz if tz is not None else self._timezone
         now = datetime.datetime.now(datetime.UTC).astimezone(effective_tz).replace(tzinfo=None)
         await self._client.write_datetime(now)
@@ -754,24 +820,66 @@ class Controller:
     async def _load_config(self) -> None:
         self._config_data = await self._client.read_object(CommunicationObject.CONFIGURATION_TABLE)
         self._table = parse_configuration_table(self._config_data)
-        # Build name → description lookup maps.  If names are duplicated, first wins.
         self._values_by_number = {v.number: v for v in self._table.values}
         self._values_by_name = {}
+        self._ambiguous_value_names = set()
         for v in self._table.values:
-            self._values_by_name.setdefault(v.name, v)
+            if v.name in self._values_by_name:
+                self._ambiguous_value_names.add(v.name)
+            else:
+                self._values_by_name[v.name] = v
         self._setpoints_by_number = {s.number: s for s in self._table.setpoints}
         self._setpoints_by_name = {}
+        self._ambiguous_setpoint_names = set()
         for s in self._table.setpoints:
-            self._setpoints_by_name.setdefault(s.name, s)
+            if s.name in self._setpoints_by_name:
+                self._ambiguous_setpoint_names.add(s.name)
+            else:
+                self._setpoints_by_name[s.name] = s
         self._common_names = parse_names_heap(self._config_data, NamesCategory.COMMON_NAMES)
         await self.refresh_timezone()
+        await self._cache_one_time_values()
         _log.info(
-            "configuration loaded: %d values, %d setpoints",
+            "configuration loaded: %d values, %d setpoints, %d one-time",
             len(self._table.values),
             len(self._table.setpoints),
+            len(self._one_time_values),
         )
 
-    async def _ensure_elevated(self) -> None:
+    async def _cache_one_time_values(self) -> None:
+        descs = [
+            v
+            for v in self.table.values
+            if v.category is ValueCategory.ONE_TIME
+            and (self._include_invisible or v.group != "Invisible")
+        ]
+        if not descs:
+            return
+        raw_map: dict[int, RawValue] = {}
+        for desc in descs:
+            try:
+                raw = await self._client.read_object(desc.number)
+            except Exception as exc:
+                _log.warning(
+                    "failed to read ONE_TIME value %r (number %d): %s",
+                    desc.name,
+                    desc.number,
+                    exc,
+                )
+                continue
+            raw_map[desc.number] = decode_raw_value(desc.data_type, raw, desc.decimal_places)
+        self._one_time_values = self._resolve_raws(raw_map, self._values_by_number)
+
+    async def elevate_access(self) -> None:
+        """Send the write-protection password to the controller, enabling protected writes.
+
+        Idempotent — safe to call multiple times; the password is only sent once.
+        Call this early to validate the password without waiting for the first write.
+
+        Raises:
+            ComApAuthError: If no password was supplied to the ``Controller``.
+            ComApInvalidPasswordError: If the controller rejects the password.
+        """
         if self._elevated:
             return
         if self._password is None:

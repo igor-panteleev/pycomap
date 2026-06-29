@@ -91,6 +91,9 @@ _NUMERIC_STRUCT_FORMAT: dict[DataType, str] = {
 
 _BINARY_TYPES = (DataType.BINARY8, DataType.BINARY16, DataType.BINARY32)
 
+RawValue = int | float | bytes
+Value = int | float | bytes | str
+
 
 class ProtectionState(enum.IntFlag):
     """ComAp ``ProtectionState`` enum (``ValueState.Level1``/``Level2``/``SensorFail``).
@@ -106,9 +109,7 @@ class ProtectionState(enum.IntFlag):
     NOT_CONFIRMED = 4
 
 
-def decode_raw_value(
-    data_type: DataType, raw: bytes, decimal_places: int = 0
-) -> int | float | bytes:
+def decode_raw_value(data_type: DataType, raw: bytes, decimal_places: int = 0) -> RawValue:
     """Decode ``raw`` bytes (``len(raw) == _DATA_TYPE_LENGTH[data_type]``) per ``data_type``.
 
     Only numeric and binary(bitfield) types are decoded to Python numbers; string/domain/

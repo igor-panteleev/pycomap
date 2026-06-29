@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from pycomap.exceptions import ComApControllerError
+import pytest
+
+from pycomap.exceptions import (
+    ComApAuthError,
+    ComApControllerError,
+    ComApInvalidAccessCodeError,
+    ComApInvalidPasswordError,
+)
 
 
 def test_controller_error_stores_code() -> None:
@@ -24,3 +31,19 @@ def test_controller_error_custom_message_overrides_default() -> None:
 def test_controller_error_is_exception() -> None:
     err = ComApControllerError(0)
     assert isinstance(err, Exception)
+
+
+def test_invalid_access_code_error_is_auth_error() -> None:
+    err = ComApInvalidAccessCodeError("bad code")
+    assert isinstance(err, ComApAuthError)
+
+
+def test_invalid_password_error_is_auth_error() -> None:
+    err = ComApInvalidPasswordError("bad password")
+    assert isinstance(err, ComApAuthError)
+
+
+def test_auth_subclasses_caught_as_auth_error() -> None:
+    for cls in (ComApInvalidAccessCodeError, ComApInvalidPasswordError):
+        with pytest.raises(ComApAuthError):
+            raise cls("test")

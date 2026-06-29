@@ -22,6 +22,14 @@ class ComApAuthError(ComApError):
     """Raised when access-code verification fails or is rejected by the controller."""
 
 
+class ComApInvalidAccessCodeError(ComApAuthError):
+    """Raised when the controller rejects the access code during authentication."""
+
+
+class ComApInvalidPasswordError(ComApAuthError):
+    """Raised when the controller rejects the write-protection password."""
+
+
 class ComApControllerError(ComApError):
     """Raised when the controller answers with an explicit ``Error`` operation.
 

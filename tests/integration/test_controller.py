@@ -128,6 +128,34 @@ async def test_controller_sync_time_uses_controller_tz(
     assert abs((result - expected).total_seconds()) <= 5
 
 
+async def test_controller_one_time_values_populated_on_connect(
+    comap_host: str, comap_access_code: str
+) -> None:
+    async with Controller(
+        ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
+    ) as ctrl:
+        ot = ctrl.one_time_values
+
+    from types import MappingProxyType
+
+    assert ot, "expected at least one ONE_TIME value to be cached"
+    assert all(isinstance(v, (int, float, bytes, str)) for v in ot.values())
+    assert isinstance(ot, MappingProxyType)
+
+
+async def test_controller_one_time_values_contains_strings(
+    comap_host: str, comap_access_code: str
+) -> None:
+    async with Controller(
+        ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
+    ) as ctrl:
+        ot = ctrl.one_time_values
+
+    string_values = {k: v for k, v in ot.items() if isinstance(v, str)}
+    assert string_values, "expected at least one string-typed ONE_TIME value (e.g. FW Version)"
+    assert all(v for v in string_values.values())  # all non-empty
+
+
 async def test_controller_sync_time_with_pytz_override(
     comap_host: str, comap_access_code: str, comap_password: int
 ) -> None:
