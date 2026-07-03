@@ -49,21 +49,28 @@ class EthernetTransport:
     ECDH/AES framing on top.
     """
 
-    def __init__(self, host: IPv4Address | str, port: int = DEFAULT_PORT) -> None:
+    def __init__(self, host: IPv4Address, port: int = DEFAULT_PORT) -> None:
         """
         Args:
-            host: Controller IP address (``IPv4Address`` or dotted string) or hostname.
+            host: Controller IP address. Exposed back via
+                [host][pycomap.protocol.EthernetTransport.host] for e.g. probing reachability
+                via [discover_host][pycomap.discovery.discover_host].
             port: TCP port; defaults to ``23`` (ComAp native protocol port).
         """
-        self._host = str(host)
+        self._host = host
         self._port = port
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
 
+    @property
+    def host(self) -> IPv4Address:
+        """The controller's configured IP address."""
+        return self._host
+
     async def connect(self) -> None:
         _log.debug("connecting to %s:%d", self._host, self._port)
         try:
-            self._reader, self._writer = await asyncio.open_connection(self._host, self._port)
+            self._reader, self._writer = await asyncio.open_connection(str(self._host), self._port)
         except OSError as exc:
             raise ComApConnectionError(f"failed to connect to {self._host}:{self._port}") from exc
         _log.info("connected to %s:%d", self._host, self._port)

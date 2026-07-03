@@ -14,6 +14,7 @@ import asyncio
 import itertools
 import logging
 import sys
+from ipaddress import IPv4Address
 
 from pycomap import Controller, EthernetTransport
 from pycomap.configuration import ValueDescription
@@ -30,7 +31,9 @@ def _display(desc: ValueDescription, val: int | float | bytes | str) -> str:
     return str(val)
 
 
-async def main(host: str, access_code: str, history_count: int, show_invisible: bool) -> None:
+async def main(
+    host: IPv4Address, access_code: str, history_count: int, show_invisible: bool
+) -> None:
     async with Controller(ComApClient(EthernetTransport(host)), access_code=access_code) as ctrl:
         values = await ctrl.read_values()
         alarms = await ctrl.read_alarms()
@@ -77,7 +80,7 @@ async def main(host: str, access_code: str, history_count: int, show_invisible: 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="One-shot controller status snapshot.")
-    parser.add_argument("host")
+    parser.add_argument("host", type=IPv4Address)
     parser.add_argument("access_code")
     parser.add_argument("--history", type=int, default=10, metavar="N")
     parser.add_argument(

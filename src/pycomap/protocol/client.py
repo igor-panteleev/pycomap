@@ -6,9 +6,11 @@ the trickiest details (read/write key-format asymmetry, the single shared IV cha
 
 Typical usage::
 
+    from ipaddress import IPv4Address
+
     from pycomap.protocol.transport import EthernetTransport
 
-    async with ComApClient(EthernetTransport("192.168.1.9")) as client:
+    async with ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))) as client:
         await client.authenticate("0")
         values = await client.read_object(CommunicationObject.VALUES_ALL)
 """
@@ -66,9 +68,11 @@ class ComApClient:
 
     Pass any ``Transport`` implementation — typically ``EthernetTransport``::
 
+        from ipaddress import IPv4Address
+
         from pycomap.protocol.transport import EthernetTransport
 
-        async with ComApClient(EthernetTransport("192.168.1.9")) as client:
+        async with ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))) as client:
             await client.authenticate("0")
     """
 
@@ -81,6 +85,11 @@ class ComApClient:
         self._identifier = 0
         self._mode = _Mode.NONE
         self._cipher: ChainedAesCbc | None = None
+
+    @property
+    def transport(self) -> Transport:
+        """The underlying byte-stream transport."""
+        return self._transport
 
     # -- connection lifecycle -------------------------------------------------
 
