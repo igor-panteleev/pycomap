@@ -1,7 +1,8 @@
 """UDP discovery of ComAp controllers on the local network.
 
 See ``docs/protocol.md`` section 1. InteliConfig broadcasts a probe to
-``<broadcast>:2413``; controllers reply unicast from port 2413. Despite living on its own
+``<subnet-broadcast>:2413`` (e.g. ``192.168.1.255``, never the global ``255.255.255.255``);
+controllers reply unicast from port 2413. Despite living on its own
 UDP port, the probe and reply are not a bespoke discovery-only format — they're a regular
 [pycomap.protocol.framing.Message][] (the exact same CRC16-validated `EthernetMessage`
 framing used by the TCP protocol on port 23): a ``SendMe`` for the ``Discovery``
@@ -18,10 +19,9 @@ from __future__ import annotations
 import asyncio
 import enum
 import logging
-import socket
 import struct
 from dataclasses import dataclass, field
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv4Interface
 
 from pycomap.exceptions import ComApProtocolError
 from pycomap.protocol.framing import Operation, build_inner, parse_inner
@@ -146,11 +146,62 @@ def _parse_device(data: bytes) -> DiscoveryDevice:
     )
 
 
+class _DiscoveryProtocol(asyncio.DatagramProtocol):
+    """Collects decoded ``Discovery`` replies, keyed by replying IP address."""
+
+    def __init__(self, found: dict[IPv4Address, DiscoveryDevice]) -> None:
+        self._found = found
+
+    def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
+        try:
+            message = parse_inner(data)
+        except ComApProtocolError:
+            return
+        if message.comm_obj != CommunicationObject.DISCOVERY:
+            return
+        if message.is_error or not message.data:
+            return
+        device = _parse_device(message.data)
+        self._found[device.ip] = device
+
+
+async def _send_probe(
+    loop: asyncio.AbstractEventLoop,
+    local_ip: IPv4Address,
+    destination: IPv4Address,
+    found: dict[IPv4Address, DiscoveryDevice],
+    *,
+    allow_broadcast: bool = False,
+) -> asyncio.DatagramTransport:
+    """Bind a socket to ``local_ip`` and send a discovery probe to ``destination``.
+
+    Replies land in ``found`` (keyed by replying IP) as they arrive; the caller is responsible
+    for waiting out the collection window and closing the returned transport.
+    """
+    transport, _protocol = await loop.create_datagram_endpoint(
+        lambda: _DiscoveryProtocol(found),
+        local_addr=(str(local_ip), 0),
+        allow_broadcast=allow_broadcast,
+    )
+    _log.debug("sending discovery probe from %s to %s:%d", local_ip, destination, DISCOVERY_PORT)
+    transport.sendto(_build_probe(), (str(destination), DISCOVERY_PORT))
+    return transport
+
+
 async def discover(
+    *interfaces: IPv4Interface,
     timeout: float = 2.0,
-    broadcast_address: str | IPv4Address = "255.255.255.255",
 ) -> list[DiscoveryDevice]:
-    """Broadcast a discovery probe and collect replies for ``timeout`` seconds.
+    """Broadcast a discovery probe from each of ``interfaces`` and collect replies for
+    ``timeout`` seconds.
+
+    On a host with multiple NICs on different subnets, a probe sent to the global broadcast
+    address `255.255.255.255` only egresses via whichever interface the OS routes it through,
+    so it may never reach the controller's actual subnet — pass one `IPv4Interface` per local
+    interface you want to probe from (e.g. `IPv4Interface("192.168.1.5/24")`, your own address
+    on that subnet) to bind and broadcast on each of them; this module doesn't enumerate
+    network interfaces itself. Pass `IPv4Interface("0.0.0.0/0")` to fall back to the wildcard
+    bind + global broadcast address on a single-NIC host.
 
     Returns one [DiscoveryDevice][pycomap.discovery.DiscoveryDevice] per distinct
     replying IP address. Malformed or unrelated UDP traffic on the same port
@@ -158,39 +209,40 @@ async def discover(
     silently skipped.
     """
     loop = asyncio.get_running_loop()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.setblocking(False)
-
     found: dict[IPv4Address, DiscoveryDevice] = {}
+    transports = await asyncio.gather(
+        *(
+            _send_probe(
+                loop, interface.ip, interface.network.broadcast_address, found, allow_broadcast=True
+            )
+            for interface in interfaces
+        )
+    )
     try:
-        sock.bind(("", 0))
-        _log.debug("sending discovery probe to %s:%d", broadcast_address, DISCOVERY_PORT)
-        sock.sendto(_build_probe(), (str(broadcast_address), DISCOVERY_PORT))
-
-        end_time = loop.time() + timeout
-        while True:
-            remaining = end_time - loop.time()
-            if remaining <= 0:
-                break
-            try:
-                payload, _peer_addr = await asyncio.wait_for(
-                    loop.sock_recvfrom(sock, 4096), timeout=remaining
-                )
-            except TimeoutError:
-                break
-            try:
-                message = parse_inner(payload)
-            except ComApProtocolError:
-                continue
-            if message.comm_obj != CommunicationObject.DISCOVERY:
-                continue
-            if message.is_error or not message.data:
-                continue
-            device = _parse_device(message.data)
-            found[device.ip] = device
+        await asyncio.sleep(timeout)
     finally:
-        sock.close()
+        for transport in transports:
+            transport.close()
 
     _log.info("discovery found %d device(s)", len(found))
     return list(found.values())
+
+
+async def discover_host(ip: IPv4Address, timeout: float = 2.0) -> DiscoveryDevice | None:
+    """Send a discovery probe directly (unicast) to a known ``ip`` and wait up to ``timeout``
+    seconds for its reply.
+
+    Useful when the controller's address is already known, so there's no need to broadcast
+    and no ambiguity about which local interface/subnet to use.
+
+    Returns `None` if ``ip`` doesn't reply within ``timeout``.
+    """
+    loop = asyncio.get_running_loop()
+    found: dict[IPv4Address, DiscoveryDevice] = {}
+    transport = await _send_probe(loop, IPv4Address("0.0.0.0"), ip, found)
+    try:
+        await asyncio.sleep(timeout)
+    finally:
+        transport.close()
+
+    return found.get(ip)

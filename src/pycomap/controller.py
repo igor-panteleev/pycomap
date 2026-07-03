@@ -6,6 +6,8 @@ elevation for protected setpoints, and timezone-aware time synchronisation.
 
 Typical usage::
 
+    from ipaddress import IPv4Address
+
     import pytz
     from pycomap import Controller
     from pycomap.protocol import ComApClient
@@ -13,7 +15,7 @@ Typical usage::
 
     tz = pytz.timezone("Europe/Kiev")
     async with Controller(
-        ComApClient(EthernetTransport("192.168.1.9")),
+        ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))),
         access_code="0",
         password=1234,
     ) as ctrl:
@@ -154,14 +156,14 @@ class Controller:
         Read-only access::
 
             async with Controller(
-                ComApClient(EthernetTransport("192.168.1.9")), access_code="0"
+                ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))), access_code="0"
             ) as ctrl:
                 values = await ctrl.read_values()
 
         With write access::
 
             async with Controller(
-                ComApClient(EthernetTransport("192.168.1.9")),
+                ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))),
                 access_code="0",
                 password=1234,
             ) as ctrl:
