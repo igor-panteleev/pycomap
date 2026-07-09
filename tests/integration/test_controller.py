@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+from ipaddress import IPv4Address
 
 import pytest
 import pytz
@@ -15,7 +16,7 @@ pytestmark = pytest.mark.integration
 
 
 async def test_controller_connects_and_reads_values(
-    comap_host: str, comap_access_code: str
+    comap_host: IPv4Address, comap_access_code: str
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
@@ -30,7 +31,7 @@ async def test_controller_connects_and_reads_values(
         assert rpm_info.number in values
 
 
-async def test_controller_value_bit_names(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_value_bit_names(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -47,7 +48,9 @@ async def test_controller_value_bit_names(comap_host: str, comap_access_code: st
     assert indices == sorted(set(indices))
 
 
-async def test_controller_named_setpoint_read(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_named_setpoint_read(
+    comap_host: IPv4Address, comap_access_code: str
+) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -56,7 +59,9 @@ async def test_controller_named_setpoint_read(comap_host: str, comap_access_code
         assert nom_rpm > 0
 
 
-async def test_controller_read_setpoints_bulk(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_read_setpoints_bulk(
+    comap_host: IPv4Address, comap_access_code: str
+) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -70,7 +75,7 @@ async def test_controller_read_setpoints_bulk(comap_host: str, comap_access_code
 
 
 async def test_controller_set_setpoint(
-    comap_host: str, comap_access_code: str, comap_password: int
+    comap_host: IPv4Address, comap_access_code: str, comap_password: int
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)),
@@ -84,7 +89,9 @@ async def test_controller_set_setpoint(
         await ctrl.set_setpoint("Emergency Start Delay", int(original))
 
 
-async def test_controller_timezone_from_setpoint(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_timezone_from_setpoint(
+    comap_host: IPv4Address, comap_access_code: str
+) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -97,7 +104,9 @@ async def test_controller_timezone_from_setpoint(comap_host: str, comap_access_c
     assert mode in (0, 2, 4)
 
 
-async def test_controller_read_aware_datetime(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_read_aware_datetime(
+    comap_host: IPv4Address, comap_access_code: str
+) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -112,7 +121,7 @@ async def test_controller_read_aware_datetime(comap_host: str, comap_access_code
 
 
 async def test_controller_sync_time_uses_controller_tz(
-    comap_host: str, comap_access_code: str, comap_password: int
+    comap_host: IPv4Address, comap_access_code: str, comap_password: int
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)),
@@ -129,7 +138,7 @@ async def test_controller_sync_time_uses_controller_tz(
 
 
 async def test_controller_one_time_values_populated_on_connect(
-    comap_host: str, comap_access_code: str
+    comap_host: IPv4Address, comap_access_code: str
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
@@ -144,7 +153,7 @@ async def test_controller_one_time_values_populated_on_connect(
 
 
 async def test_controller_one_time_values_contains_strings(
-    comap_host: str, comap_access_code: str
+    comap_host: IPv4Address, comap_access_code: str
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
@@ -157,7 +166,7 @@ async def test_controller_one_time_values_contains_strings(
 
 
 async def test_controller_sync_time_with_pytz_override(
-    comap_host: str, comap_access_code: str, comap_password: int
+    comap_host: IPv4Address, comap_access_code: str, comap_password: int
 ) -> None:
     tz = pytz.timezone("Europe/Kiev")
     async with Controller(

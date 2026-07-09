@@ -6,11 +6,13 @@ siblings): LAN discovery and the native ECDH/AES-encrypted control protocol on p
 ## Quick start
 
 ```python
+from ipaddress import IPv4Address
+
 from pycomap import Controller, EthernetTransport
 from pycomap.protocol import ComApClient
 
 async with Controller(
-    ComApClient(EthernetTransport("192.168.1.9")),
+    ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))),
     access_code="0",   # factory default (drives ECDH key derivation)
     password=1234,     # write-protection password (0-9999); omit for read-only
 ) as ctrl:
