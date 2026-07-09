@@ -2,9 +2,11 @@
 
 Quick start::
 
+    from ipaddress import IPv4Address
+
     from pycomap import Command, Controller, EthernetTransport, discover
 
-    async with ComApClient(EthernetTransport("192.168.1.9")) as client:
+    async with ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))) as client:
         await client.authenticate("0")
         await client.elevate_access(password)
         result = await client.execute_command(Command.FAULT_RESET)
