@@ -90,4 +90,5 @@ known-first-party = ["pycomap"]
 python-version = "3.14"
 
 [tool.uv]
+required-version = ">=0.11.24"
 publish-url = "https://upload.pypi.org/legacy/"
