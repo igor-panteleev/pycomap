@@ -19,9 +19,9 @@ jobs:
       tag_created: ${{ steps.tag.outputs.tag_created }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -68,7 +68,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.tag.outputs.tag_created == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           generate_release_notes: true
