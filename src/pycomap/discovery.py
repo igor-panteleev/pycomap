@@ -119,7 +119,10 @@ def _parse_device(data: bytes) -> DiscoveryDevice:
     is_units_list_complete = bool(data[offset])
     offset += 1
 
-    assert offset == header_size
+    if offset != header_size:
+        raise ComApProtocolError(
+            f"discovery device header parse offset mismatch: got {offset}, expected {header_size}"
+        )
     units = [
         DiscoveryUnit(
             type=data[i],
