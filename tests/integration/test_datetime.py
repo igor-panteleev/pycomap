@@ -8,6 +8,7 @@ tests); only the clock is written.
 from __future__ import annotations
 
 import datetime
+from ipaddress import IPv4Address
 
 import pytest
 
@@ -16,7 +17,7 @@ from pycomap.protocol import ComApClient, EthernetTransport
 pytestmark = pytest.mark.integration
 
 
-async def test_read_datetime(comap_host: str, comap_access_code: str) -> None:
+async def test_read_datetime(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with ComApClient(EthernetTransport(comap_host)) as client:
         await client.authenticate(comap_access_code)
         dt = await client.read_datetime()
@@ -25,7 +26,9 @@ async def test_read_datetime(comap_host: str, comap_access_code: str) -> None:
     assert dt.year >= 2020
 
 
-async def test_sync_datetime(comap_host: str, comap_access_code: str, comap_password: int) -> None:
+async def test_sync_datetime(
+    comap_host: IPv4Address, comap_access_code: str, comap_password: int
+) -> None:
     now = datetime.datetime.now().replace(microsecond=0)
 
     async with ComApClient(EthernetTransport(comap_host)) as client:

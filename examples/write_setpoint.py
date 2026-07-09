@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from ipaddress import IPv4Address
 
 from pycomap import Controller, EthernetTransport
 from pycomap.protocol import ComApClient
 
 
 async def main(
-    host: str, access_code: str, password: int, setpoint_name: str, new_value: float
+    host: IPv4Address, access_code: str, password: int, setpoint_name: str, new_value: float
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(host)), access_code=access_code, password=password
@@ -46,7 +47,7 @@ async def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Read/write/restore a named setpoint.")
-    parser.add_argument("host")
+    parser.add_argument("host", type=IPv4Address)
     parser.add_argument("access_code")
     parser.add_argument("password", type=int)
     parser.add_argument("setpoint_name")
