@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ipaddress import IPv4Address
+
 import pytest
 
 from pycomap import Controller
@@ -11,7 +13,7 @@ from pycomap.protocol import ComApClient, CommunicationObject, EthernetTransport
 pytestmark = pytest.mark.integration
 
 
-async def test_read_history_records(comap_host: str, comap_access_code: str) -> None:
+async def test_read_history_records(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with ComApClient(EthernetTransport(comap_host)) as client:
         await client.authenticate(comap_access_code)
         config_data = await client.read_object(CommunicationObject.CONFIGURATION_TABLE)
@@ -40,7 +42,7 @@ async def test_read_history_records(comap_host: str, comap_access_code: str) -> 
             assert rec.reason or rec.data
 
 
-async def test_controller_read_history(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_read_history(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -58,7 +60,7 @@ async def test_controller_read_history(comap_host: str, comap_access_code: str) 
 
 
 async def test_controller_history_indices_descending(
-    comap_host: str, comap_access_code: str
+    comap_host: IPv4Address, comap_access_code: str
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
@@ -70,7 +72,9 @@ async def test_controller_history_indices_descending(
     assert indices == sorted(indices, reverse=True)
 
 
-async def test_controller_decode_history_snapshot(comap_host: str, comap_access_code: str) -> None:
+async def test_controller_decode_history_snapshot(
+    comap_host: IPv4Address, comap_access_code: str
+) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code
     ) as ctrl:
@@ -90,7 +94,7 @@ async def test_controller_decode_history_snapshot(comap_host: str, comap_access_
 
 
 async def test_decode_history_snapshot_empty_for_text_record(
-    comap_host: str, comap_access_code: str
+    comap_host: IPv4Address, comap_access_code: str
 ) -> None:
     async with Controller(
         ComApClient(EthernetTransport(comap_host)), access_code=comap_access_code

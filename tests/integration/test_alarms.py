@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ipaddress import IPv4Address
+
 import pytest
 
 from pycomap.alarms import parse_alarm_list
@@ -11,7 +13,7 @@ from pycomap.protocol import ComApClient, CommunicationObject, EthernetTransport
 pytestmark = pytest.mark.integration
 
 
-async def test_parse_live_alarm_list(comap_host: str, comap_access_code: str) -> None:
+async def test_parse_live_alarm_list(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with ComApClient(EthernetTransport(comap_host)) as client:
         await client.authenticate(comap_access_code)
         config_data = await client.read_object(CommunicationObject.CONFIGURATION_TABLE)
