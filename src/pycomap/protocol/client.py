@@ -6,9 +6,11 @@ the trickiest details (read/write key-format asymmetry, the single shared IV cha
 
 Typical usage::
 
+    from ipaddress import IPv4Address
+
     from pycomap.protocol.transport import EthernetTransport
 
-    async with ComApClient(EthernetTransport("192.168.1.9")) as client:
+    async with ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))) as client:
         await client.authenticate("0")
         values = await client.read_object(CommunicationObject.VALUES_ALL)
 """
@@ -21,6 +23,7 @@ import hashlib
 import logging
 import struct
 from types import TracebackType
+from typing import Self
 
 from pycomap.datatypes import decode_fdate, decode_ftime, encode_fdate, encode_ftime
 from pycomap.exceptions import (
@@ -61,18 +64,25 @@ _AUTH_FALLBACK_CODES = {
 _log = logging.getLogger(__name__)
 
 
-class ComApClient:
+class ComApClient[TransportT: Transport]:
     """Speaks the ECDH/AES-encrypted ``EthernetMessage`` protocol over any ``Transport``.
+
+    Generic over the concrete ``Transport`` type, so
+    [transport][pycomap.protocol.ComApClient.transport] gives back the type you passed in
+    (e.g. ``ComApClient[EthernetTransport]`` exposes ``.transport.host``) instead of the
+    narrower structural ``Transport`` protocol.
 
     Pass any ``Transport`` implementation — typically ``EthernetTransport``::
 
+        from ipaddress import IPv4Address
+
         from pycomap.protocol.transport import EthernetTransport
 
-        async with ComApClient(EthernetTransport("192.168.1.9")) as client:
+        async with ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))) as client:
             await client.authenticate("0")
     """
 
-    def __init__(self, transport: Transport) -> None:
+    def __init__(self, transport: TransportT) -> None:
         """
         Args:
             transport: Byte-stream transport to use (typically ``EthernetTransport``).
@@ -81,6 +91,11 @@ class ComApClient:
         self._identifier = 0
         self._mode = _Mode.NONE
         self._cipher: ChainedAesCbc | None = None
+
+    @property
+    def transport(self) -> TransportT:
+        """The underlying byte-stream transport."""
+        return self._transport
 
     # -- connection lifecycle -------------------------------------------------
 
@@ -186,7 +201,7 @@ class ComApClient:
         self._mode = _Mode.NONE
         self._cipher = None
 
-    async def __aenter__(self) -> ComApClient:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
@@ -344,7 +359,8 @@ class ComApClient:
 
         if self._mode is _Mode.ALIGNED:
             return block_payload
-        assert self._cipher is not None
+        if self._cipher is None:
+            raise ComApProtocolError("AES mode active but cipher not initialized")
         return self._cipher.decrypt(block_payload)
 
     async def _write_inner(self, inner: bytes) -> None:
@@ -354,5 +370,6 @@ class ComApClient:
         elif self._mode is _Mode.ALIGNED:
             await self._transport.write(wrap_outer(padded))
         else:
-            assert self._cipher is not None
+            if self._cipher is None:
+                raise ComApProtocolError("AES mode active but cipher not initialized")
             await self._transport.write(wrap_outer(self._cipher.encrypt(padded)))

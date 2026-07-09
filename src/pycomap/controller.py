@@ -6,6 +6,8 @@ elevation for protected setpoints, and timezone-aware time synchronisation.
 
 Typical usage::
 
+    from ipaddress import IPv4Address
+
     import pytz
     from pycomap import Controller
     from pycomap.protocol import ComApClient
@@ -13,7 +15,7 @@ Typical usage::
 
     tz = pytz.timezone("Europe/Kiev")
     async with Controller(
-        ComApClient(EthernetTransport("192.168.1.9")),
+        ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))),
         access_code="0",
         password=1234,
     ) as ctrl:
@@ -29,6 +31,7 @@ import logging
 import re
 from collections.abc import Mapping
 from types import MappingProxyType, TracebackType
+from typing import Self
 
 from pycomap.alarms import AlarmRecord, parse_alarm_list
 from pycomap.configuration import (
@@ -59,6 +62,7 @@ from pycomap.history import HistoryRecord, parse_history_record
 from pycomap.protocol.client import ComApClient
 from pycomap.protocol.commands import ControllerCommand
 from pycomap.protocol.objects import CommunicationObject
+from pycomap.protocol.transport import Transport
 
 _log = logging.getLogger(__name__)
 
@@ -131,7 +135,7 @@ def _encode_setpoint_value(
     return encode_raw_value(data_type, value, decimal_places)
 
 
-class Controller:
+class Controller[TransportT: Transport]:
     """High-level async client for a ComAp controller.
 
     Fetches and caches the ``ConfigurationTable`` on [connect][pycomap.Controller.connect],
@@ -154,14 +158,14 @@ class Controller:
         Read-only access::
 
             async with Controller(
-                ComApClient(EthernetTransport("192.168.1.9")), access_code="0"
+                ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))), access_code="0"
             ) as ctrl:
                 values = await ctrl.read_values()
 
         With write access::
 
             async with Controller(
-                ComApClient(EthernetTransport("192.168.1.9")),
+                ComApClient(EthernetTransport(IPv4Address("192.168.1.9"))),
                 access_code="0",
                 password=1234,
             ) as ctrl:
@@ -170,7 +174,7 @@ class Controller:
 
     def __init__(
         self,
-        client: ComApClient,
+        client: ComApClient[TransportT],
         access_code: str,
         password: int | None = None,
         include_invisible: bool = False,
@@ -205,7 +209,7 @@ class Controller:
         """Close the underlying transport."""
         await self._client.close()
 
-    async def __aenter__(self) -> Controller:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
@@ -220,7 +224,7 @@ class Controller:
     # -- properties ----------------------------------------------------------
 
     @property
-    def client(self) -> ComApClient:
+    def client(self) -> ComApClient[TransportT]:
         """The underlying low-level client (escape hatch for direct comm object access)."""
         return self._client
 

@@ -15,6 +15,8 @@ because the generator is offline.
 
 from __future__ import annotations
 
+from ipaddress import IPv4Address
+
 import pytest
 
 from pycomap.protocol import ComApClient, EthernetTransport
@@ -23,14 +25,14 @@ from pycomap.protocol.commands import Command
 pytestmark = pytest.mark.integration
 
 
-async def test_fault_reset(comap_host: str, comap_access_code: str) -> None:
+async def test_fault_reset(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with ComApClient(EthernetTransport(comap_host)) as client:
         await client.authenticate(comap_access_code)
         result = await client.execute_command(Command.FAULT_RESET)
     assert Command.FAULT_RESET.succeeded(result)
 
 
-async def test_horn_reset(comap_host: str, comap_access_code: str) -> None:
+async def test_horn_reset(comap_host: IPv4Address, comap_access_code: str) -> None:
     async with ComApClient(EthernetTransport(comap_host)) as client:
         await client.authenticate(comap_access_code)
         result = await client.execute_command(Command.HORN_RESET)
