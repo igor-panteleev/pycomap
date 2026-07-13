@@ -1,0 +1,24 @@
+article:has(> #comap-controller-reference) th[role="columnheader"] {
+  white-space: nowrap;
+}
+
+article:has(> #comap-controller-reference) .ss-main {
+  --ss-primary-color: var(--md-accent-fg-color);
+  --ss-bg-color: var(--md-default-bg-color);
+  --ss-font-color: var(--md-default-fg-color);
+  --ss-font-placeholder-color: var(--md-default-fg-color--light);
+  --ss-border-color: var(--md-default-fg-color--lightest);
+  --ss-highlight-color: var(--md-accent-fg-color--transparent);
+  --ss-success-color: var(--md-accent-fg-color);
+  margin-bottom: 0.75rem;
+  max-width: 20rem;
+}
+
+/* SlimSelect appends its open dropdown panel to <body> (for absolute positioning), so it's
+   never a descendant of <article> — this can't be scoped the same way as .ss-main. Safe to
+   leave unscoped: it's only ever created by our own page-scoped JS. */
+.ss-content {
+  --ss-bg-color: var(--md-default-bg-color);
+  --ss-font-color: var(--md-default-fg-color);
+  --ss-border-color: var(--md-default-fg-color--lightest);
+}
