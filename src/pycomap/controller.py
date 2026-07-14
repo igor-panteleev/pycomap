@@ -319,6 +319,51 @@ class Controller[TransportT: Transport]:
         except KeyError:
             raise KeyError(f"no setpoint named {name_or_number!r}") from None
 
+    def _string_list_options(
+        self, desc: ValueDescription | SetpointDescription
+    ) -> list[tuple[int, str]]:
+        """Shared ``STRING_LIST`` option lookup for
+        [value_options][pycomap.Controller.value_options] and
+        [setpoint_options][pycomap.Controller.setpoint_options].
+
+        Options are stored in ``CommonNames`` at indices ``[low_limit .. high_limit]``.
+        """
+        if desc.data_type is not DataType.STRING_LIST:
+            raise ComApProtocolError(
+                f"{desc.name!r} is DataType.{desc.data_type.name}, not STRING_LIST"
+            )
+        return [
+            (wire_value, self._common_names[desc.low_limit + wire_value])
+            for wire_value in range(desc.high_limit - desc.low_limit + 1)
+            if desc.low_limit + wire_value < len(self._common_names)
+        ]
+
+    def value_options(self, name_or_number: str | int) -> list[tuple[int, str]]:
+        """Return the available options for a ``STRING_LIST`` value.
+
+        Options are stored in ``CommonNames`` at indices ``[low_limit .. high_limit]``.
+        The wire value (0-based) is what the controller sends on the wire and what
+        [value_label][pycomap.Controller.value_label] expects; the label is the string
+        shown on the front panel and in InteliConfig. Note that
+        [read_values][pycomap.Controller.read_values] resolves ``STRING_LIST`` values to
+        their label automatically — this method is for enumerating all possible options
+        up front (e.g. to build a legend or validate against known states).
+
+        Args:
+            name_or_number: Value name or comm object number.
+
+        Returns:
+            ``[(wire_value, label), ...]`` ordered by wire value.
+
+        Raises:
+            ComApProtocolError: If the value is not ``STRING_LIST`` type.
+
+        Examples:
+            >>> ctrl.value_options("Engine State")
+            [(0, 'Ready'), (1, 'Prestart'), (2, 'Cranking'), ...]
+        """
+        return self._string_list_options(self.value_info(name_or_number))
+
     def setpoint_options(self, name_or_number: str | int) -> list[tuple[int, str]]:
         """Return the available options for a ``STRING_LIST`` setpoint.
 
@@ -340,16 +385,7 @@ class Controller[TransportT: Transport]:
             >>> ctrl.setpoint_options("Summer Time Mode")
             [(0, 'Disabled'), (1, 'Winter'), (2, 'Summer'), (3, 'Winter-S'), (4, 'Summer-S')]
         """
-        desc = self.setpoint_info(name_or_number)
-        if desc.data_type is not DataType.STRING_LIST:
-            raise ComApProtocolError(
-                f"setpoint {desc.name!r} is DataType.{desc.data_type.name}, not STRING_LIST"
-            )
-        return [
-            (wire_value, self._common_names[desc.low_limit + wire_value])
-            for wire_value in range(desc.high_limit - desc.low_limit + 1)
-            if desc.low_limit + wire_value < len(self._common_names)
-        ]
+        return self._string_list_options(self.setpoint_info(name_or_number))
 
     def value_label(self, name_or_number: str | int, wire_value: int) -> str:
         """Return the display label for a ``STRING_LIST`` value's wire integer.

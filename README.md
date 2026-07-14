@@ -23,7 +23,7 @@ async with Controller(
     await ctrl.set_setpoint("Summer Time Mode", "Winter")  # STRING_LIST by label
 ```
 
-See the [API docs](https://igor-panteleev.github.io/pycomap/) for full reference. `just docs-serve` to browse locally.
+See the [API docs](https://igor-panteleev.github.io/pycomap/) for full reference, built with [Zensical](https://zensical.org/). `just docs-serve` to browse locally.
 
 ## Development
 

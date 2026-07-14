@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # pycomap
 
 Async Python client for ComAp controllers (InteliLite AMF25 and likely compatible

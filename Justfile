@@ -64,13 +64,13 @@ coverage: prepare
 
 # --- Documentation ---
 
-# Build MkDocs static site (output: site/)
+# Build Zensical static site (output: site/)
 docs: prepare
-    uv run mkdocs build
+    uv run zensical build
 
-# Serve MkDocs site locally with live reload
+# Serve Zensical site locally with live reload
 docs-serve: prepare
-    uv run mkdocs serve
+    uv run zensical serve
 
 # Regenerate llms.txt and CLAUDE.md from README.md
 ai-docs: prepare

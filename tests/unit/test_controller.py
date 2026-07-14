@@ -466,6 +466,62 @@ def test_resolve_raws_string_list_uses_low_limit(mocker) -> None:
     assert result[99] == "VTwo"
 
 
+def test_value_options_returns_wire_label_pairs(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _build_string_list_table(low_limit=0))
+    assert ctrl.value_options(99) == [(0, "VOne"), (1, "VTwo")]
+
+
+def test_value_options_uses_low_limit_offset(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _build_string_list_table(low_limit=1))
+    # low_limit=1, high_limit=1 → single option at CommonNames[1] = "VTwo"
+    assert ctrl.value_options(99) == [(0, "VTwo")]
+
+
+def test_value_options_non_string_list_raises(mocker) -> None:
+    table_data = build_table(
+        category_counts=(1, 0, 0, 0),
+        numbers=[10],
+        records=[value_record(data_type=DataType.UNSIGNED16, data_index=0)],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+    with pytest.raises(ComApProtocolError, match="not STRING_LIST"):
+        ctrl.value_options(10)
+
+
+def _build_setpoint_string_list_table(*, low_limit: int = 0) -> bytes:
+    return build_table(
+        category_counts=(0, 0, 0, 0),
+        numbers=[],
+        records=[],
+        setpoint_category_counts=(1, 0),
+        setpoint_numbers=[199],
+        setpoint_records=[
+            setpoint_record(
+                data_type=DataType.STRING_LIST, data_index=0, low_limit=low_limit, high_limit=1
+            )
+        ],
+    )
+
+
+def test_setpoint_options_returns_wire_label_pairs(mocker) -> None:
+    ctrl = _make_ctrl_with_table(mocker, _build_setpoint_string_list_table(low_limit=0))
+    assert ctrl.setpoint_options(199) == [(0, "VOne"), (1, "VTwo")]
+
+
+def test_setpoint_options_non_string_list_raises(mocker) -> None:
+    table_data = build_table(
+        category_counts=(0, 0, 0, 0),
+        numbers=[],
+        records=[],
+        setpoint_category_counts=(1, 0),
+        setpoint_numbers=[199],
+        setpoint_records=[setpoint_record(data_type=DataType.UNSIGNED16, data_index=0)],
+    )
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+    with pytest.raises(ComApProtocolError, match="not STRING_LIST"):
+        ctrl.setpoint_options(199)
+
+
 def test_resolve_raws_text_type_decoded_ascii(mocker) -> None:
     table_data = build_table(
         category_counts=(1, 0, 0, 0),
