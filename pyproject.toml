@@ -38,10 +38,11 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "configargparse>=1.7.5",
     "ifaddr>=0.2.0",
-    "mkdocs>=1.6,<2",
-    "mkdocs-material>=9.5",
-    "mkdocstrings[python]>=0.25",
+    "python-dotenv>=1.2.2",
+    "zensical>=0.0.50",
+    "mkdocstrings-python>=1.0",
     "pre-commit>=4.6.0",
     "pytest>=8",
     "pytest-asyncio>=0.24",

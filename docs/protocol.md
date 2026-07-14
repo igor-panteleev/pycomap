@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # ComAp InteliLite/AMF25 — Protocol Reverse-Engineering Notes
 
 This document records everything established during the reverse-engineering session: the

@@ -23,7 +23,7 @@ just unit        # pytest tests/unit, no hardware  (alias: u)
 just test        # full pytest suite  (alias: t)
 just integration # pytest tests/integration, requires .env  (alias: i)
 just coverage    # unit tests with coverage report  (alias: cov)
-just docs        # build MkDocs static site → site/
+just docs        # build Zensical static site → site/
 just docs-serve  # live-reload preview at localhost:8000
 just ai-docs     # regenerate llms.txt and CLAUDE.md from README.md
 ```
@@ -64,7 +64,7 @@ async with Controller(
     await ctrl.set_setpoint("Summer Time Mode", "Winter")  # STRING_LIST by label
 ```
 
-See the [API docs](https://igor-panteleev.github.io/pycomap/) for full reference. `just docs-serve` to browse locally.
+See the [API docs](https://igor-panteleev.github.io/pycomap/) for full reference, built with [Zensical](https://zensical.org/). `just docs-serve` to browse locally.
 
 ## Development
 
