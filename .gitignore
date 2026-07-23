@@ -22,3 +22,6 @@ htmlcov/
 
 # MkDocs build output
 site/
+
+# DLLs
+dlls

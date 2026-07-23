@@ -29,6 +29,7 @@ from __future__ import annotations
 import datetime
 import logging
 import re
+import struct
 from collections.abc import Mapping
 from types import MappingProxyType, TracebackType
 from typing import Self
@@ -526,10 +527,29 @@ class Controller[TransportT: Transport]:
         return parse_alarm_list(self._config_data, data)
 
     async def read_history(self, count: int = 10) -> list[HistoryRecord]:
-        """Read up to ``count`` of the most recent history records, newest first."""
+        """Read up to ``count`` of the most recent history records, newest first.
+
+        ``count`` is transparently capped to the controller's own ring-buffer size —
+        read fresh each call from ``HistoryLength`` (C.O. 24538, number of currently valid
+        records — grows from 0 up to ``MaxHistoryRecords`` before the buffer first wraps,
+        then stays there) and ``MaxHistoryRecords`` (C.O. 24564, the buffer's fixed
+        capacity). Without this, requesting more records than the buffer holds would
+        silently wrap around and re-return the newest records a second time.
+        """
         if self._config_data is None:
             raise ComApProtocolError("not connected — call connect() first")
+
+        history_length = struct.unpack(
+            "<H", await self._client.read_object(CommunicationObject.HISTORY_LENGTH)
+        )[0]
+        max_history_records = struct.unpack(
+            "<H", await self._client.read_object(CommunicationObject.MAX_HISTORY_RECORDS)
+        )[0]
+        count = min(count, history_length, max_history_records)
+
         records: list[HistoryRecord] = []
+        if count <= 0:
+            return records
         raw = await self._client.read_object(CommunicationObject.YOUNGEST_HISTORY_RECORD)
         rec = parse_history_record(self._config_data, raw)
         if rec:
@@ -546,10 +566,12 @@ class Controller[TransportT: Transport]:
     def decode_history_snapshot(self, record: HistoryRecord) -> dict[int, Value]:
         """Decode the value snapshot embedded in an alarm ``HistoryRecord``.
 
-        Alarm/event records carry a snapshot of the ``ValuesAll`` blob captured at the
-        moment of the event.  Returns ``{number: decoded_value}`` for every value whose
-        data fits within the snapshot; the set of values is typically the first ~31 entries
-        from the controller's value table (those with small ``data_index`` values).
+        Alarm/event records carry a fixed-format snapshot of a specific set of values (RPM,
+        voltages, frequencies, battery voltage, binary I/O, mode, ...) captured at the moment
+        of the event, per the controller's ``HistoryDescriptionCollection`` layout (see
+        [decode_history_snapshot][pycomap.configuration.decode_history_snapshot]). Returns
+        ``{number: decoded_value}`` for every history field whose data fits within the
+        snapshot.
 
         Returns an empty dict for text records (``record.is_text=True``) or records with
         no embedded data.

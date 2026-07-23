@@ -53,6 +53,7 @@ _log = logging.getLogger(__name__)
 
 __all__ = [
     "ConfigurationTable",
+    "HistoryFieldDescription",
     "NamesCategory",
     "ProtectionState",
     "SetpointCategory",
@@ -78,6 +79,11 @@ _VALUE_RECORD_SIZE = 13
 _STATE_INDEX_FOR_NO_STATE = 1023
 _NUM_SETPOINTS_CAT_P_OFFSET = 98
 _SETPOINT_RECORD_SIZE = 14
+
+# History snapshot field layout (IL3, ConfigurationTableLoaderIL3.CreateConfigurationTableLoadInfo
+# NumHistFieldsOffset=152, IsNumHistFieldsByte=false). Distinct from ValuesAll's data_index --
+# see HistoryFieldDescription and _parse_history_description.
+_NUM_HIST_FIELDS_OFFSET = 152
 
 # Unified names heap (IL3-specific fixed offsets, see module docstring and
 # docs/protocol.md section 4).
@@ -262,6 +268,21 @@ class ValueState:
 
 
 @dataclass(slots=True, frozen=True)
+class HistoryFieldDescription:
+    """One entry in the controller's history-snapshot field layout.
+
+    Describes where a single value's raw bytes sit within a ``HistoryRecord.data`` snapshot.
+    This is a **separate** layout from ``ValuesAll`` -- ``data_index`` here is the byte offset
+    within the 57-byte history snapshot, unrelated to ``value.data_index`` (which is the
+    offset within ``ValuesAll``/``ValueStatesAndDataAll``). See
+    [decode_history_snapshot][pycomap.configuration.decode_history_snapshot].
+    """
+
+    data_index: int
+    value: ValueDescription
+
+
+@dataclass(slots=True, frozen=True)
 class ConfigurationTable:
     """Parsed ``ConfigurationTable`` (value and setpoint descriptions -- see module
     docstring).
@@ -269,6 +290,7 @@ class ConfigurationTable:
 
     values: list[ValueDescription]
     setpoints: list[SetpointDescription]
+    history_fields: list[HistoryFieldDescription]
 
 
 def _as_int16(v: int) -> int:
@@ -328,6 +350,40 @@ def _parse_group_map(
                 co_to_group[setpoint_numbers[obj_idx]] = group_name
 
     return co_to_group
+
+
+def _parse_history_description(
+    data: bytes, values: list[ValueDescription]
+) -> list[HistoryFieldDescription]:
+    """Parse the history-snapshot field layout section of the ``ConfigurationTable``.
+
+    Source: ``ConfigurationTableLoaderCommonExtensions.CommonLoadHistoryFromStream`` +
+    ``ConfigurationTableLoaderIL3.LoadHistoryItemDescriptionFromStream`` in
+    ``ComAp.Controller.dll`` (IL3, non-Format7 -- ``NumHistFieldsOffset=152``,
+    ``IsNumHistFieldsByte=false``, ``AreAllAddresses32Bit=true``).
+
+    Layout at offset 152: ``uint16`` item count, ``uint16`` padding (read but discarded by
+    the non-byte-count branch), ``uint32`` absolute address of the item table. Each item is
+    one ``uint32`` LE: bits 0-10 = ``val_index`` (0-based index into ``values``, in the same
+    stream-load order used to build that list -- *not* a comm-object number or a
+    ``ValuesAll`` ``data_index``), bits 11-19 = ``data_index`` (byte offset within the
+    history snapshot payload, stored directly per item), bits 20-31 = ``name_index`` (into
+    ``NamesCategory.COMMON_NAMES`` -- not resolved here; each ``value.name`` already carries
+    a name).
+    """
+    num_items = struct.unpack_from("<H", data, _NUM_HIST_FIELDS_OFFSET)[0]
+    table_addr = struct.unpack_from("<I", data, _NUM_HIST_FIELDS_OFFSET + 4)[0]
+
+    fields = []
+    offset = table_addr
+    for _ in range(num_items):
+        word = struct.unpack_from("<I", data, offset)[0]
+        offset += 4
+        val_index = get_bits(word, 0, 11)
+        data_index = get_bits(word, 11, 9)
+        if val_index < len(values):
+            fields.append(HistoryFieldDescription(data_index=data_index, value=values[val_index]))
+    return fields
 
 
 def parse_configuration_table(data: bytes) -> ConfigurationTable:
@@ -407,7 +463,9 @@ def parse_configuration_table(data: bytes) -> ConfigurationTable:
     values = [dataclasses.replace(v, group=group_map.get(v.number)) for v in values]
     setpoints = [dataclasses.replace(s, group=group_map.get(s.number)) for s in setpoints]
 
-    return ConfigurationTable(values=values, setpoints=setpoints)
+    history_fields = _parse_history_description(data, values)
+
+    return ConfigurationTable(values=values, setpoints=setpoints, history_fields=history_fields)
 
 
 def _parse_setpoints(
@@ -499,25 +557,28 @@ def decode_values_all(table: ConfigurationTable, data: bytes) -> dict[int, RawVa
 def decode_history_snapshot(table: ConfigurationTable, snapshot: bytes) -> dict[int, RawValue]:
     """Decode the value snapshot from a ``HistoryRecord.data`` field.
 
-    Alarm/event history records carry a snapshot of the first N bytes of the
-    ``ValuesAll`` blob captured at the moment the event occurred.  The layout is
-    identical to ``ValuesAll`` (each value at its ``data_index`` byte offset) but
-    truncated to ``len(snapshot)`` — values whose data would extend beyond the
-    snapshot are silently omitted.
+    Alarm/event history records carry a fixed-format snapshot of a specific set of values
+    (RPM, voltages, frequencies, battery voltage, binary I/O, mode, ...), captured at the
+    moment the event occurred. This layout is defined by the controller's own
+    ``HistoryDescriptionCollection`` (``table.history_fields`` -- a separate section of the
+    ``ConfigurationTable``, unrelated to ``ValuesAll``'s per-value ``data_index``) rather than
+    being a truncated copy of ``ValuesAll``. Verified field-for-field against a live
+    controller's WebSupervisor history view.
 
-    Returns ``{number: decoded_value}`` for every value that fits, using the same
-    type/decimal-places decoding as
-    [decode_values_all][pycomap.configuration.decode_values_all]. ``ONE_TIME`` values
-    are never included.  Returns an empty dict if ``snapshot`` is empty (text records).
+    Returns ``{number: decoded_value}`` for every history field that fits within
+    ``len(snapshot)``, using the same type/decimal-places decoding as
+    [decode_values_all][pycomap.configuration.decode_values_all]. Returns an empty dict if
+    ``snapshot`` is empty (text records).
     """
     result: dict[int, RawValue] = {}
-    for value in table.values:
+    for field in table.history_fields:
+        value = field.value
         if value.category is ValueCategory.ONE_TIME:
             continue
-        end = value.data_index + value.data_length
+        end = field.data_index + value.data_length
         if end > len(snapshot):
             continue
-        raw = snapshot[value.data_index : end]
+        raw = snapshot[field.data_index : end]
         result[value.number] = decode_raw_value(value.data_type, raw, value.decimal_places)
     return result
 

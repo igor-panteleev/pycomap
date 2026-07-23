@@ -17,7 +17,8 @@ from pycomap.configuration import (
 )
 from pycomap.controller import Controller, _encode_setpoint_value, _parse_gmt_label
 from pycomap.exceptions import ComApAuthError, ComApProtocolError
-from tests.unit.builders import build_table, setpoint_record, value_record
+from pycomap.protocol.objects import CommunicationObject
+from tests.unit.builders import build_table, history_record, setpoint_record, value_record
 
 # ---------------------------------------------------------------------------
 # _parse_gmt_label
@@ -778,3 +779,74 @@ async def test_elevate_access_is_idempotent(mocker) -> None:
     await ctrl.elevate_access()
 
     ctrl._client.elevate_access.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# read_history — capping to HistoryLength / MaxHistoryRecords
+# ---------------------------------------------------------------------------
+
+
+def _ctrl_for_history(mocker):
+    from unittest.mock import AsyncMock
+
+    table_data = build_table(category_counts=(0, 0, 0, 0), numbers=[], records=[])
+    ctrl = _make_ctrl_with_table(mocker, table_data)
+    ctrl._config_data = table_data
+    mock_client = AsyncMock()
+    ctrl._client = mock_client
+    return ctrl, mock_client
+
+
+async def test_read_history_caps_to_history_length_when_buffer_not_full(mocker) -> None:
+    """HistoryLength (3) is below both the requested count (10) and MaxHistoryRecords (350)
+    -- e.g. a controller whose ring buffer hasn't filled up yet."""
+    ctrl, mock_client = _ctrl_for_history(mocker)
+    mock_client.read_object.side_effect = [
+        struct.pack("<H", 3),  # HistoryLength
+        struct.pack("<H", 350),  # MaxHistoryRecords
+        history_record(index=3),
+        history_record(index=2),
+        history_record(index=1),
+    ]
+
+    records = await ctrl.read_history(count=10)
+
+    assert [r.index for r in records] == [3, 2, 1]
+    assert mock_client.read_object.call_count == 5
+
+
+async def test_read_history_caps_to_max_history_records_when_buffer_full(mocker) -> None:
+    """Requested count (400) exceeds both HistoryLength and MaxHistoryRecords (5, i.e. a
+    fully-wrapped ring buffer) -- must not silently wrap around and re-return records."""
+    ctrl, mock_client = _ctrl_for_history(mocker)
+    mock_client.read_object.side_effect = [
+        struct.pack("<H", 5),  # HistoryLength
+        struct.pack("<H", 5),  # MaxHistoryRecords
+        history_record(index=5),
+        history_record(index=4),
+        history_record(index=3),
+        history_record(index=2),
+        history_record(index=1),
+    ]
+
+    records = await ctrl.read_history(count=400)
+
+    assert [r.index for r in records] == [5, 4, 3, 2, 1]
+    assert mock_client.read_object.call_count == 7
+
+
+async def test_read_history_returns_empty_when_history_length_zero(mocker) -> None:
+    """A brand-new controller with no logged events yet -- must not attempt any
+    YOUNGEST_HISTORY_RECORD/OLDER_HISTORY_RECORD read."""
+    ctrl, mock_client = _ctrl_for_history(mocker)
+    mock_client.read_object.side_effect = [
+        struct.pack("<H", 0),  # HistoryLength
+        struct.pack("<H", 350),  # MaxHistoryRecords
+    ]
+
+    records = await ctrl.read_history(count=10)
+
+    assert records == []
+    assert mock_client.read_object.call_count == 2
+    mock_client.read_object.assert_any_call(CommunicationObject.HISTORY_LENGTH)
+    mock_client.read_object.assert_any_call(CommunicationObject.MAX_HISTORY_RECORDS)

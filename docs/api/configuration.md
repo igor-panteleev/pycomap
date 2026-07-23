@@ -12,6 +12,8 @@ these internally — you only need them directly when working with raw blobs.
 
 ::: pycomap.configuration.ValueState
 
+::: pycomap.configuration.HistoryFieldDescription
+
 ## Enums
 
 ::: pycomap.configuration.ValueCategory
