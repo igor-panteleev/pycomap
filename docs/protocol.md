@@ -696,12 +696,35 @@ total hours and bits 24-31 = minutes.
 
 - **Text records** (`prefix_index == 30`): null-terminated ASCII string describing the
   configuration change (e.g. `"T=ETH CA1 A CON(24554)=21:25:08"`).
-- **Alarm/event records**: a snapshot of the first 57 bytes of `ValuesAll`, captured at the
-  moment of the event. The byte layout is identical to the live `ValuesAll` blob — each
-  value's raw bytes sit at its `data_index` byte offset, with the same data type and
-  decimal-place encoding. Values whose `data_index + data_length > 57` are absent from the
-  snapshot. On the test hardware this covers 31 values: `Binary Inputs` (data_index=0) through
-  `Load Power Factor` (data_index=56, 1 byte). Decoded via
+- **Alarm/event records**: a fixed-format snapshot of a specific set of values, captured at
+  the moment of the event. **This is not a truncated `ValuesAll`** — an earlier version of
+  this doc assumed the byte layout matched `ValuesAll`'s `data_index`, which is disproved by
+  live evidence (e.g. `Binary Outputs` differs between a live `ValuesAll` read and a
+  same-instant history record's bytes at that offset; `VBat`/`Generator Frequency`/`Mains
+  Frequency`/`RPM` all have `ValuesAll` `data_index` values past byte 57 yet are populated
+  in every history row shown by WebSupervisor).
+
+  The real layout comes from a separate `HistoryDescriptionCollection` section of the
+  `ConfigurationTable` (`ConfigurationTablePart.TerminalPart`), decompiled from
+  `ComAp.Controller.dll`
+  (`ConfigurationTableLoaderCommonExtensions.CommonLoadHistoryFromStream` +
+  `ConfigurationTableLoaderIL3.LoadHistoryItemDescriptionFromStream`, IL3 non-Format7):
+
+  - Offset 152 in the `ConfigurationTable`: `uint16` item count, then a `uint16` padding
+    field (read but discarded), then a `uint32` absolute address of the item table.
+  - Each item is one `uint32` LE: bits 0-10 = `val_index` (0-based index into the *stream
+    order* of parsed `Values` — not a comm-object number, not `ValuesAll`'s `data_index`),
+    bits 11-19 = `data_index` (byte offset within the 57-byte snapshot, stored directly per
+    item — not derived by summing previous items' lengths), bits 20-31 = `name_index` (into
+    `NamesCategory.CommonNames` — a display name for the item, e.g. `"RPM"`, `"VBat"`).
+
+  On the test hardware this is 30 items, in the same order as WebSupervisor's history table
+  columns: `RPM, PF, LChr, IL1, IL2, IL3, Mfrq, Vm1, Vm2, Vm3, Vm12, Vm23, Vm31, VBat, AIN1,
+  AIN2, AIN3, AIN4, BIN, BOUT, Gfrq, Vg1, Vg2, Vg3, Vg12, Vg23, Vg31, Q, Pwr, Mode`. Verified
+  field-for-field (including bit-for-bit `BIN`/`BOUT` and enum-for-enum `Mode`) against a
+  live controller's WebSupervisor history view. Parsed into
+  `ConfigurationTable.history_fields` (`pycomap.configuration.HistoryFieldDescription`,
+  distinct from `ValueDescription.data_index`) and decoded via
   `pycomap.configuration.decode_history_snapshot(table, record.data)` or
   `Controller.decode_history_snapshot(record)`.
 

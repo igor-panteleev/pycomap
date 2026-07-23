@@ -45,6 +45,38 @@ def value_record(
     return struct.pack("<IIBHH", dword1, dword2, int(data_type), low_limit, high_limit)
 
 
+def _bcd(v: int) -> int:
+    return ((v // 10) << 4) | (v % 10)
+
+
+def history_record(
+    *,
+    reason_index: int = 0,
+    reason_category: int = 0,
+    prefix_index: int = 0,
+    level: int = 0,
+    index: int = 0,
+    day: int = 1,
+    month: int = 1,
+    year: int = 26,
+    hour: int = 0,
+    minute: int = 0,
+    second: int = 0,
+    payload: bytes = b"",
+) -> bytes:
+    """Build one 69-byte ``HistoryRecord`` wire blob (see ``pycomap.history`` module docstring).
+
+    Defaults to a valid, resolvable wall-clock (RTC) record with a zeroed payload.
+    """
+    word = (reason_index & 0xFFF) | ((reason_category & 0x3) << 13)
+    flags_byte = (prefix_index & 0x1F) | ((level & 0x7) << 5)
+    date_time_bytes = bytes(
+        [_bcd(day), _bcd(month), _bcd(year), _bcd(hour), _bcd(minute), _bcd(second)]
+    )
+    ts = date_time_bytes + bytes([0]) + struct.pack("<H", index)
+    return struct.pack("<HB", word, flags_byte) + ts + payload.ljust(57, b"\x00")
+
+
 def setpoint_record(
     *,
     data_type: DataType,
@@ -73,7 +105,12 @@ def build_table(
     setpoint_category_counts: tuple[int, int] = (0, 0),
     setpoint_numbers: Sequence[int] = (),
     setpoint_records: Sequence[bytes] = (),
+    history_items: Sequence[tuple[int, int, int]] = (),
 ) -> bytes:
+    """``history_items`` is a sequence of ``(val_index, data_index, name_index)`` tuples --
+    see ``pycomap.configuration._parse_history_description``. ``val_index`` is a 0-based
+    index into ``numbers``/``records`` (declaration order, not a comm-object number).
+    """
     header = bytearray(_NAMES_HEAP_END)
     header[5] = 4  # ConfigFormatTerminal > 3 → names-heap access vector items are uint32
     header[6] = controller_type
@@ -118,5 +155,13 @@ def build_table(
     struct.pack_into("<H", blob, 594, len(_COMMON_NAMES))
     struct.pack_into("<H", blob, 503, len(_COMMON_NAMES))
     blob[505] = len(_DIMENSIONS)
+
+    if history_items:
+        hist_table_addr = len(blob)
+        for val_index, data_index, name_index in history_items:
+            word = (val_index & 0x7FF) | ((data_index & 0x1FF) << 11) | ((name_index & 0xFFF) << 20)
+            blob += struct.pack("<I", word)
+        struct.pack_into("<H", blob, 152, len(history_items))
+        struct.pack_into("<I", blob, 156, hist_table_addr)
 
     return bytes(blob)

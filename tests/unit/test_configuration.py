@@ -273,14 +273,16 @@ def test_value_signed_limits_reinterpreted_for_integer_type() -> None:
 
 
 def test_decode_history_snapshot_decodes_fitting_values() -> None:
-    # Two UNSIGNED16 values at data_index 0 and 2; snapshot is exactly 4 bytes.
+    # Two UNSIGNED16 values; history-snapshot layout puts them at data_index 0 and 2
+    # (independent of their ValuesAll data_index, set to something else here to prove that).
     data = _build_table(
         category_counts=(2, 0, 0, 0),
         numbers=[10, 20],
         records=[
-            _value_record(data_type=DataType.UNSIGNED16, data_index=0),
-            _value_record(data_type=DataType.UNSIGNED16, data_index=2),
+            _value_record(data_type=DataType.UNSIGNED16, data_index=99),
+            _value_record(data_type=DataType.UNSIGNED16, data_index=98),
         ],
+        history_items=[(0, 0, 0), (1, 2, 0)],
     )
     table = parse_configuration_table(data)
     snapshot = struct.pack("<HH", 230, 50)  # 4 bytes exactly covering both values
@@ -290,14 +292,15 @@ def test_decode_history_snapshot_decodes_fitting_values() -> None:
 
 
 def test_decode_history_snapshot_omits_values_beyond_snapshot() -> None:
-    # First value fits in 2-byte snapshot; second (data_index=2) does not.
+    # First value fits in 2-byte snapshot; second (history data_index=2) does not.
     data = _build_table(
         category_counts=(2, 0, 0, 0),
         numbers=[10, 20],
         records=[
-            _value_record(data_type=DataType.UNSIGNED16, data_index=0),
-            _value_record(data_type=DataType.UNSIGNED16, data_index=2),
+            _value_record(data_type=DataType.UNSIGNED16, data_index=99),
+            _value_record(data_type=DataType.UNSIGNED16, data_index=98),
         ],
+        history_items=[(0, 0, 0), (1, 2, 0)],
     )
     table = parse_configuration_table(data)
     snapshot = struct.pack("<H", 100)  # only 2 bytes — value 20 is out of range
@@ -313,17 +316,20 @@ def test_decode_history_snapshot_empty_returns_empty_dict() -> None:
         category_counts=(1, 0, 0, 0),
         numbers=[10],
         records=[_value_record(data_type=DataType.UNSIGNED16, data_index=0)],
+        history_items=[(0, 0, 0)],
     )
     table = parse_configuration_table(data)
     assert decode_history_snapshot(table, b"") == {}
 
 
 def test_decode_history_snapshot_skips_one_time_values() -> None:
-    # ONE_TIME values (category index 3) are never in the snapshot.
+    # ONE_TIME values (category index 3) are never in the snapshot, even if referenced by
+    # the history-description table.
     data = _build_table(
         category_counts=(0, 0, 0, 1),  # one ONE_TIME value
         numbers=[99],
         records=[_value_record(data_type=DataType.UNSIGNED16, data_index=0)],
+        history_items=[(0, 0, 0)],
     )
     table = parse_configuration_table(data)
     snapshot = struct.pack("<H", 42)
@@ -331,3 +337,21 @@ def test_decode_history_snapshot_skips_one_time_values() -> None:
 
     assert 99 not in result
     assert result == {}
+
+
+def test_parse_history_description_resolves_order_and_offset() -> None:
+    # val_index refers to declaration order (not comm-object number); data_index/name_index
+    # come straight from the history-description entry, independent of ValuesAll's data_index.
+    data = _build_table(
+        category_counts=(2, 0, 0, 0),
+        numbers=[10, 20],
+        records=[
+            _value_record(data_type=DataType.UNSIGNED16, data_index=99),
+            _value_record(data_type=DataType.UNSIGNED8, data_index=98),
+        ],
+        history_items=[(1, 0, 0), (0, 1, 0)],  # deliberately reversed order
+    )
+    table = parse_configuration_table(data)
+
+    assert [f.value.number for f in table.history_fields] == [20, 10]
+    assert [f.data_index for f in table.history_fields] == [0, 1]
