@@ -138,6 +138,10 @@ first one (see §2.4 step 2):
 offset  size  field
 0       2     data_length : uint16 LE — length of `data` below (header/CRC not included)
 2       1     bit-packed: bits[0:3] = Operation (§2.2), bits[3:8] = ControllerAddress - 1
+              (matches setpoint `ControllerAddress`, C.O. 24537 — factory default `1`, range
+              1-32; only relevant with multiple units addressed through one gateway/party-line.
+              `ComApClient(transport, addr=N)` sets the default for every `read_object`/
+              `write_object` call; each call can still override it per-call.)
 3       1     Identifier — sequence/correlation byte
 4       2     CommunicationObject ID : uint16 LE
 6       dlen  data

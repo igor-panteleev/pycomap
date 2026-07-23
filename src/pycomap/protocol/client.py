@@ -82,12 +82,20 @@ class ComApClient[TransportT: Transport]:
             await client.authenticate("0")
     """
 
-    def __init__(self, transport: TransportT) -> None:
+    def __init__(self, transport: TransportT, addr: int = 1) -> None:
         """
         Args:
             transport: Byte-stream transport to use (typically ``EthernetTransport``).
+            addr: Default controller unit address (``ControllerAddress`` setpoint, C.O.
+                24537; range 1-32, factory default ``1``) used for every ``read_object``/
+                ``write_object`` call that doesn't override it explicitly. Only matters if
+                the target controller's ``ControllerAddress`` has been changed from the
+                default -- e.g. multiple units addressed through one gateway/party-line,
+                the same address you'd set in InteliMonitor/InteliConfig's connection
+                dialog.
         """
         self._transport = transport
+        self._addr = addr
         self._identifier = 0
         self._mode = _Mode.NONE
         self._cipher: ChainedAesCbc | None = None
@@ -215,12 +223,13 @@ class ComApClient[TransportT: Transport]:
 
     # -- communication objects -------------------------------------------------
 
-    async def read_object(self, comm_obj: int, addr: int = 1) -> bytes:
+    async def read_object(self, comm_obj: int, addr: int | None = None) -> bytes:
         """Read a communication object, handling ``SendToBlock`` continuation transparently.
 
         Args:
             comm_obj: Communication object number (C.O.).
-            addr: Controller unit address; ``1`` for the primary unit.
+            addr: Controller unit address; defaults to the address passed to
+                ``ComApClient.__init__`` (``1`` unless overridden there).
 
         Returns:
             Raw payload bytes.
@@ -229,6 +238,7 @@ class ComApClient[TransportT: Transport]:
             ComApControllerError: If the controller responds with an error code.
             ComApProtocolError: If an unexpected message operation is received.
         """
+        addr = self._addr if addr is None else addr
         ident = self._next_identifier()
         await self._write_message(Operation.SEND_ME, addr, comm_obj, b"", ident)
 
@@ -251,13 +261,14 @@ class ComApClient[TransportT: Transport]:
                 f"unexpected operation {message.op!r} while reading {comm_obj}"
             )
 
-    async def write_object(self, comm_obj: int, data: bytes, addr: int = 1) -> bytes:
+    async def write_object(self, comm_obj: int, data: bytes, addr: int | None = None) -> bytes:
         """Write a communication object.
 
         Args:
             comm_obj: Communication object number (C.O.).
             data: Raw payload bytes to write.
-            addr: Controller unit address; ``1`` for the primary unit.
+            addr: Controller unit address; defaults to the address passed to
+                ``ComApClient.__init__`` (``1`` unless overridden there).
 
         Returns:
             Any data carried back on the ``NEXT`` acknowledgment (usually empty).
@@ -265,6 +276,7 @@ class ComApClient[TransportT: Transport]:
         Raises:
             ComApControllerError: If the controller responds with an error code.
         """
+        addr = self._addr if addr is None else addr
         ident = self._next_identifier()
         await self._write_message(Operation.SEND_TO, addr, comm_obj, data, ident)
         message = await self._read_message()
